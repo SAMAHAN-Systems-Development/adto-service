@@ -8,13 +8,13 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
-  @Post()
+  @Post('/login/admin')
   async loginAdmin(@Body() createAuthDto: AdminLoginDto) {
     return this.authService.loginAdmin(createAuthDto);
   }
 
   @Public()
-  @Post()
+  @Post('/login/user')
   async loginuser(@Body() createAuthDto: AdminLoginDto) {
     return this.authService.loginuser(createAuthDto);
   }
