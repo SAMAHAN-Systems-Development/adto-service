@@ -13,7 +13,18 @@ import { PaymentsModule } from './payments/payments.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
-  imports: [AdminsModule, AuthModule, EventsModule, FormAnswersModule, FormQuestionsModule, FormQuestionsChoicesModule, OrganizationParentsModule, OrganizationsModule, PaymentsModule, UsersModule],
+  imports: [
+    AdminsModule,
+    AuthModule,
+    EventsModule,
+    FormAnswersModule,
+    FormQuestionsModule,
+    FormQuestionsChoicesModule,
+    OrganizationParentsModule,
+    OrganizationsModule,
+    PaymentsModule,
+    UsersModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

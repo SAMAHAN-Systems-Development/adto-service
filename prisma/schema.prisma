@@ -21,12 +21,6 @@ enum FormElements {
   SELECT
 }
 
-model Admin {
-  id       String   @id @default(cuid())
-  email    String   @unique
-  password String
-}
-
 model OrganizationParent {
   id            String   @id @default(cuid())
   name          String
@@ -47,13 +41,15 @@ model OrganizationChild {
   id          String   @id @default(cuid())
   name        String
   acronym     String?
-  email       String
+  icon        String?
+  email       String  @unique
   password    String
   description String?
   facebook    String?
   instagram   String?
   twitter     String?
   linkedin    String?
+  isActive   Boolean @default(true)
   isAdmin     Boolean @default(false)
   events     Event[]
   organizationParents OrganizationGroup[]
@@ -70,19 +66,22 @@ model User {
   email    String   @unique
   password String
   contactNumber String
-  validId  String
+  validId  String?
   courseId String
   course   Course @relation(fields: [courseId], references: [id])
   isAlumni Boolean // If Alumni => render Batch Field else render YTG field (save in batch field)
   batch Int? // create util func for current students ((YTG) => YTG - CurrentDate())
+  isActive Boolean @default(true)
   registrations Registration[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Payment {
   id          String   @id @default(cuid())
   amount      Float
   currency    String
-  paymentDate DateTime
+  paymentDate DateTime @default(now())
   registrationId String @unique
   registration Registration @relation(fields: [registrationId], references: [id])
 }
@@ -99,6 +98,8 @@ model Registration {
   event    Event  @relation(fields: [eventId], references: [id])
   payment Payment?
   formAnswers FormAnswers[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model TicketCategory {
@@ -111,6 +112,8 @@ model TicketCategory {
   eventId     String
   event       Event @relation(fields: [eventId], references: [id])
   registrations Registration[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Event {
@@ -127,6 +130,8 @@ model Event {
   registrations Registration[]
   ticketCategories TicketCategory[]
   formQuestions FormQuestions[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model FormAnswers {
@@ -136,6 +141,8 @@ model FormAnswers {
   formQuestion FormQuestions @relation(fields: [formQuestionId], references: [id])
   registrationId String
   registration Registration @relation(fields: [registrationId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model FormQuestionChoices {
@@ -143,6 +150,8 @@ model FormQuestionChoices {
   choice      String
   formQuestionId String
   formQuestion FormQuestions @relation(fields: [formQuestionId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model FormQuestions {
@@ -154,6 +163,8 @@ model FormQuestions {
   formElement FormElements
   formQuestionChoices FormQuestionChoices[]
   formAnswers FormAnswers[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 
