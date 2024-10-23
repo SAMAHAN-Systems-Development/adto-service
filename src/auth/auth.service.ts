@@ -84,6 +84,4 @@ export class AuthService {
       access_token: token,
     };
   }
-
-  async requestResetPassword(email: string) {}
 }
