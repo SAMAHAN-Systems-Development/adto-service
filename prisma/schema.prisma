@@ -1,0 +1,160 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum FormElements {
+  TEXT
+  TEXTAREA
+  RADIO
+  CHECKBOX
+  SELECT
+}
+
+model Admin {
+  id       String   @id @default(cuid())
+  email    String   @unique
+  password String
+}
+
+model OrganizationParent {
+  id            String   @id @default(cuid())
+  name          String
+  description   String
+  organizationChildren OrganizationGroup[]
+}
+
+model OrganizationGroup {
+  organizationParentId String
+  organizationParent OrganizationParent @relation(fields: [organizationParentId], references: [id])
+  organizationChildId String
+  organizationChild OrganizationChild @relation(fields: [organizationChildId], references: [id])
+
+  @@id([organizationParentId, organizationChildId])
+}
+
+model OrganizationChild {
+  id          String   @id @default(cuid())
+  name        String
+  acronym     String?
+  email       String
+  password    String
+  description String?
+  facebook    String?
+  instagram   String?
+  twitter     String?
+  linkedin    String?
+  isAdmin     Boolean @default(false)
+  events     Event[]
+  organizationParents OrganizationGroup[]
+}
+
+model Course {
+  id       String   @id @default(cuid())
+  name     String
+  users    User[]
+}
+
+model User {
+  id       String   @id @default(cuid())
+  email    String   @unique
+  password String
+  contactNumber String
+  validId  String
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id])
+  isAlumni Boolean // If Alumni => render Batch Field else render YTG field (save in batch field)
+  batch Int? // create util func for current students ((YTG) => YTG - CurrentDate())
+  registrations Registration[]
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  amount      Float
+  currency    String
+  paymentDate DateTime
+  registrationId String @unique
+  registration Registration @relation(fields: [registrationId], references: [id])
+}
+
+model Registration {
+  id       String   @id @default(cuid())
+  userId   String
+  eventId  String
+  confirmedAt DateTime?
+  isAttended Boolean @default(false)
+  ticketCategoryId String
+  ticketCategory TicketCategory @relation(fields: [ticketCategoryId], references: [id])
+  user     User   @relation(fields: [userId], references: [id])
+  event    Event  @relation(fields: [eventId], references: [id])
+  payment Payment?
+  formAnswers FormAnswers[]
+}
+
+model TicketCategory {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  price       Float
+  capacity    Int
+  registrationDeadline DateTime
+  eventId     String
+  event       Event @relation(fields: [eventId], references: [id])
+  registrations Registration[]
+}
+
+model Event {
+  id         String   @id @default(cuid())
+  name        String
+  description String
+  dateStart        DateTime
+  dateEnd         DateTime
+  isRegistrationOpen Boolean
+  isRegistrationRequired Boolean
+  isOpenToOutsiders Boolean
+  orgId       String
+  org         OrganizationChild @relation(fields: [orgId], references: [id])
+  registrations Registration[]
+  ticketCategories TicketCategory[]
+  formQuestions FormQuestions[]
+}
+
+model FormAnswers {
+  id          String   @id @default(cuid())
+  answer      String
+  formQuestionId String
+  formQuestion FormQuestions @relation(fields: [formQuestionId], references: [id])
+  registrationId String
+  registration Registration @relation(fields: [registrationId], references: [id])
+}
+
+model FormQuestionChoices {
+  id          String   @id @default(cuid())
+  choice      String
+  formQuestionId String
+  formQuestion FormQuestions @relation(fields: [formQuestionId], references: [id])
+}
+
+model FormQuestions {
+  id          String   @id @default(cuid())
+  question    String
+  eventId     String
+  event       Event @relation(fields: [eventId], references: [id])
+  formElementId String
+  formElement FormElements
+  formQuestionChoices FormQuestionChoices[]
+  formAnswers FormAnswers[]
+}
+
+
+
