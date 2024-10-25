@@ -1,26 +1,87 @@
-import { Injectable } from '@nestjs/common';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { AdminLoginDto } from './dto/admin-login.dto';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
+import { UserLoginDto } from './dto/user-login.dto';
 
 @Injectable()
 export class AuthService {
-  create(createAuthDto: CreateAuthDto) {
-    return 'This action adds a new auth';
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly jwtService: JwtService,
+  ) {}
+
+  async loginAdmin(adminLoginDto: AdminLoginDto) {
+    const { password, email } = adminLoginDto;
+    let admin;
+
+    try {
+      admin = await this.prismaService.organizationChild.findUnique({
+        where: {
+          email,
+        },
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw new NotFoundException('User not found');
+      }
+      throw new HttpException(
+        'Internal server error',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    const isPasswordValid = await bcrypt.compare(admin.password, password);
+
+    if (!isPasswordValid) {
+      throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
+    }
+
+    const payload = { email: admin.email, sub: admin.id };
+    const token = this.jwtService.sign(payload);
+
+    return {
+      access_token: token,
+    };
   }
 
-  findAll() {
-    return `This action returns all auth`;
-  }
+  async loginuser(userLoginDto: UserLoginDto) {
+    const { password, email } = userLoginDto;
+    let user;
 
-  findOne(id: number) {
-    return `This action returns a #${id} auth`;
-  }
+    try {
+      user = await this.prismaService.user.findUnique({
+        where: {
+          email,
+        },
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw new NotFoundException('User not found');
+      }
+      throw new HttpException(
+        'Internal server error',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
 
-  update(id: number, updateAuthDto: UpdateAuthDto) {
-    return `This action updates a #${id} auth`;
-  }
+    const isPasswordValid = await bcrypt.compare(user.password, password);
 
-  remove(id: number) {
-    return `This action removes a #${id} auth`;
+    if (!isPasswordValid) {
+      throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
+    }
+
+    const payload = { email, sub: user.id };
+    const token = this.jwtService.sign(payload);
+
+    return {
+      access_token: token,
+    };
   }
 }
