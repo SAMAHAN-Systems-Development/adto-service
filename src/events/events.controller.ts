@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Query,
+} from '@nestjs/common';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -13,22 +21,43 @@ export class EventsController {
   }
 
   @Get()
-  findAll() {
-    return this.eventsService.findAll();
+  async findAll(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('isRegistrationOpen') isRegistrationOpen?: boolean,
+    @Query('isRegistrationRequired') isRegistrationRequired?: boolean,
+    @Query('isOpenToOutsiders') isOpenToOutsiders?: boolean,
+    @Query('searchFilter') searchFilter?: string,
+    @Query('orderBy') orderBy?: 'asc' | 'desc',
+  ) {
+    return this.eventsService.findAll({
+      page: Number(page) || 1,
+      limit: Number(limit) || 10,
+      isRegistrationOpen: isRegistrationOpen || undefined,
+      isRegistrationRequired: isRegistrationRequired || undefined,
+      isOpenToOutsiders: isOpenToOutsiders || undefined,
+      searchFilter: searchFilter || undefined,
+      orderBy: orderBy || 'asc',
+    });
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.eventsService.findOne(+id);
+    return this.eventsService.findOne(id);
+  }
+
+  @Patch(':id')
+  publish(@Param('id') id: string) {
+    return this.eventsService.publishEvent(id);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateEventDto: UpdateEventDto) {
-    return this.eventsService.update(+id, updateEventDto);
+    return this.eventsService.update(id, updateEventDto);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.eventsService.remove(+id);
+  @Patch(':id')
+  softDelete(@Param('id') id: string) {
+    return this.eventsService.softDelete(id);
   }
 }
