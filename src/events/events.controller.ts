@@ -20,8 +20,8 @@ export class EventsController {
     return this.eventsService.create(createEventDto);
   }
 
-  @Get()
-  async findAll(
+  @Get('/published')
+  async findAllPublished(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('isRegistrationOpen') isRegistrationOpen?: boolean,
@@ -31,6 +31,28 @@ export class EventsController {
     @Query('orderBy') orderBy?: 'asc' | 'desc',
   ) {
     return this.eventsService.findAll({
+      page: Number(page) || 1,
+      limit: Number(limit) || 10,
+      isRegistrationOpen: isRegistrationOpen || undefined,
+      isRegistrationRequired: isRegistrationRequired || undefined,
+      isOpenToOutsiders: isOpenToOutsiders || undefined,
+      searchFilter: searchFilter || undefined,
+      orderBy: orderBy || 'asc',
+    });
+  }
+
+  @Get('/organization/:id')
+  async findAllByOrganizationChild(
+    @Param('id') id: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('isRegistrationOpen') isRegistrationOpen?: boolean,
+    @Query('isRegistrationRequired') isRegistrationRequired?: boolean,
+    @Query('isOpenToOutsiders') isOpenToOutsiders?: boolean,
+    @Query('searchFilter') searchFilter?: string,
+    @Query('orderBy') orderBy?: 'asc' | 'desc',
+  ) {
+    return this.eventsService.findAllByOrganizationChild(id, {
       page: Number(page) || 1,
       limit: Number(limit) || 10,
       isRegistrationOpen: isRegistrationOpen || undefined,

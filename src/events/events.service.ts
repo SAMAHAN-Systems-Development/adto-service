@@ -66,6 +66,73 @@ export class EventsService {
           { org: { acronym: { contains: searchFilter, mode: 'insensitive' } } },
         ],
       }),
+      isPublished: true,
+      deletedAt: null,
+    };
+
+    const events = await this.prisma.event.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: {
+        dateStart: orderBy,
+      },
+      include: {
+        org: true,
+      },
+    });
+
+    const totalCount = await this.prisma.event.count({ where });
+
+    return {
+      data: events,
+      meta: {
+        totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+        currentPage: page,
+        limit,
+      },
+    };
+  }
+
+  async findAllByOrganizationChild(
+    orgId: string,
+    query: {
+      page?: number;
+      limit?: number;
+      isRegistrationOpen?: boolean;
+      isRegistrationRequired?: boolean;
+      isOpenToOutsiders?: boolean;
+      searchFilter?: string;
+      orderBy?: 'asc' | 'desc';
+    },
+  ) {
+    const {
+      page = 1,
+      limit = 10,
+      isRegistrationOpen,
+      isRegistrationRequired,
+      isOpenToOutsiders,
+      searchFilter,
+      orderBy = 'asc',
+    } = query;
+
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.EventWhereInput = {
+      ...(isRegistrationOpen && { isRegistrationOpen }),
+      ...(isRegistrationRequired && { isRegistrationRequired }),
+      ...(isOpenToOutsiders && { isOpenToOutsiders }),
+      ...(searchFilter && {
+        OR: [
+          { name: { contains: searchFilter, mode: 'insensitive' } },
+          { description: { contains: searchFilter, mode: 'insensitive' } },
+          { org: { name: { contains: searchFilter, mode: 'insensitive' } } },
+          { org: { acronym: { contains: searchFilter, mode: 'insensitive' } } },
+        ],
+      }),
+      deletedAt: null,
+      orgId,
     };
 
     const events = await this.prisma.event.findMany({
@@ -94,95 +161,92 @@ export class EventsService {
   }
 
   async findOne(id: string) {
-    const event = await this.prisma.event.findUnique({
-      where: {
-        id,
-      },
-      include: {
-        org: true,
-        registrations: true,
-        ticketCategories: true,
-        formQuestions: true,
-      },
-    });
+    try {
+      const event = await this.prisma.event.findUnique({
+        where: {
+          id,
+        },
+        include: {
+          org: true,
+          registrations: true,
+          ticketCategories: true,
+          formQuestions: true,
+        },
+      });
 
-    if (!event) {
+      return event;
+    } catch (error) {
       throw new HttpException('Event not found', HttpStatus.NOT_FOUND);
     }
-
-    return event;
   }
 
   async update(id: string, updateEventDto: UpdateEventDto) {
-    const updatedEvent = await this.prisma.event.update({
-      where: {
-        id,
-      },
-      data: updateEventDto,
-    });
+    await this.findOne(id);
+    try {
+      const updatedEvent = await this.prisma.event.update({
+        where: {
+          id,
+        },
+        data: updateEventDto,
+      });
 
-    if (updatedEvent instanceof Error) {
+      return {
+        message: 'Event updated successfully',
+        data: updatedEvent,
+      };
+    } catch (error) {
       throw new HttpException(
         'Event could not be updated',
         HttpStatus.BAD_REQUEST,
       );
     }
-
-    return {
-      message: 'Event updated successfully',
-      data: updatedEvent,
-    };
   }
 
   async publishEvent(id: string) {
-    const event = await this.findOne(id);
+    await this.findOne(id);
+    try {
+      const publishedEvent = await this.prisma.event.update({
+        where: {
+          id,
+        },
+        data: {
+          isPublished: true,
+        },
+      });
 
-    if (!event) {
-      throw new HttpException('Event not found', HttpStatus.NOT_FOUND);
-    }
-
-    const publishedEvent = await this.prisma.event.update({
-      where: {
-        id,
-      },
-      data: {
-        isPublished: true,
-      },
-    });
-
-    if (publishedEvent instanceof Error) {
+      return {
+        message: 'Event published successfully',
+        data: publishedEvent,
+      };
+    } catch (error) {
       throw new HttpException(
         'Event could not be published',
         HttpStatus.BAD_REQUEST,
       );
     }
-
-    return {
-      message: 'Event published successfully',
-      data: publishedEvent,
-    };
   }
 
   async softDelete(id: string) {
-    const deletedEvent = await this.prisma.event.update({
-      where: {
-        id,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
-    });
+    await this.findOne(id);
+    try {
+      const deletedEvent = await this.prisma.event.update({
+        where: {
+          id,
+        },
+        data: {
+          deletedAt: new Date(),
+        },
+      });
 
-    if (deletedEvent instanceof Error) {
+      return {
+        message: 'Event deleted successfully',
+        data: deletedEvent,
+      };
+    } catch (error) {
       throw new HttpException(
         'Event could not be deleted',
         HttpStatus.BAD_REQUEST,
       );
     }
-
-    return {
-      message: 'Event deleted successfully',
-      data: deletedEvent,
-    };
   }
 }
