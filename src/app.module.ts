@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { AdminsModule } from './admins/admins.module';
 import { AuthModule } from './auth/auth.module';
 import { EventsModule } from './events/events.module';
 import { FormAnswersModule } from './form-answers/form-answers.module';
@@ -14,7 +13,6 @@ import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
-    AdminsModule,
     AuthModule,
     EventsModule,
     FormAnswersModule,

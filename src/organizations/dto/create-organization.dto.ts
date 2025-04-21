@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEmail } from 'class-validator';
+import { IsString, IsOptional, IsEmail, IsBoolean } from 'class-validator';
 
 export class CreateOrganizationDto {
   @IsString()
@@ -34,4 +34,16 @@ export class CreateOrganizationDto {
   @IsOptional()
   @IsString()
   linkedin?: string;
+
+  @IsOptional()
+  @IsString()
+  icon?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isAdmin?: boolean;
+
+  @IsOptional()
+  @IsString()
+  userId?: string;
 }
