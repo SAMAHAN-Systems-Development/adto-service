@@ -3,24 +3,24 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import { UserType } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prismaService: PrismaService) {}
 
   async create(createUserDto: CreateUserDto) {
-    const { courseId, password, ...rest } = createUserDto;
+    const { password, email } = createUserDto;
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-    const newUser = this.prismaService.user.create({
+
+    const newUser = await this.prismaService.user.create({
       data: {
-        ...rest,
+        email,
         password: hashedPassword,
-        course: {
-          connect: {
-            id: courseId,
-          },
-        },
+        userType: UserType.USER,
+        isActive: true,
       },
     });
 
@@ -28,12 +28,18 @@ export class UsersService {
   }
 
   async findAll() {
-    const users = this.prismaService.user.findMany({
+    const users = await this.prismaService.user.findMany({
       where: {
         isActive: true,
       },
       include: {
-        registrations: true,
+        booker: {
+          include: {
+            registrations: true,
+            course: true,
+          },
+        },
+        organization: true,
       },
     });
 
@@ -41,12 +47,18 @@ export class UsersService {
   }
 
   async findOne(id: string) {
-    const user = this.prismaService.user.findUnique({
+    const user = await this.prismaService.user.findUnique({
       where: {
         id,
       },
       include: {
-        registrations: true,
+        booker: {
+          include: {
+            registrations: true,
+            course: true,
+          },
+        },
+        organization: true,
       },
     });
 
@@ -54,7 +66,7 @@ export class UsersService {
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {
-    const updatedUser = this.prismaService.user.update({
+    const updatedUser = await this.prismaService.user.update({
       where: {
         id,
       },
@@ -65,7 +77,7 @@ export class UsersService {
   }
 
   async deactivate(id: string) {
-    const deactivatedUser = this.prismaService.user.update({
+    const deactivatedUser = await this.prismaService.user.update({
       where: {
         id,
       },
