@@ -3,6 +3,7 @@ import {
   HttpStatus,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
@@ -26,27 +27,41 @@ export class AuthService {
           email,
         },
       });
-    } catch (error) {
-      if (error instanceof NotFoundException) {
+      if (!user) {
         throw new NotFoundException('User not found');
       }
+
+      if (!user.isActive) {
+        throw new UnauthorizedException('User account is inactive');
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+      const payload = {
+        email,
+        sub: user.id,
+        role: user.userType,
+        orgId: user.organizationId,
+      };
+      const token = this.jwtService.sign(payload);
+
+      return {
+        access_token: token,
+      };
+    } catch (error) {
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      console.error('Unexpected Error during login:', error);
       throw new HttpException(
-        'Internal server error',
+        'Internal server error during login',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
-
-    const isPasswordValid = await bcrypt.compare(user.password, password);
-
-    if (!isPasswordValid) {
-      throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
-    }
-
-    const payload = { email, sub: user.id };
-    const token = this.jwtService.sign(payload);
-
-    return {
-      access_token: token,
-    };
   }
 }
