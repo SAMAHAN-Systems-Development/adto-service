@@ -78,10 +78,22 @@ export class OrganizationsController {
   }
 
   @Patch(':id')
+  @UseInterceptors(FileInterceptor('icon'))
   update(
     @Param('id') id: string,
     @Body() updateOrganizationDto: UpdateOrganizationDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 1000000 }),
+          new FileTypeValidator({
+            fileType: /(image\/jpeg|image\/png)/,
+          }),
+        ],
+      }),
+    )
+    icon: Express.Multer.File,
   ) {
-    return this.organizationsService.update(id, updateOrganizationDto);
+    return this.organizationsService.update(id, updateOrganizationDto, icon);
   }
 }

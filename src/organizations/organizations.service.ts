@@ -119,20 +119,67 @@ export class OrganizationsService {
     return organization;
   }
 
-  async update(id: string, updateOrganizationDto: UpdateOrganizationDto) {
-    await this.findOneById(id);
+  async update(
+    id: string,
+    updateOrganizationDto: UpdateOrganizationDto,
+    icon?: Express.Multer.File,
+  ) {
+    const organization = await this.findOneById(id);
+
+    if (!organization) {
+      throw new HttpException('Organization not found', HttpStatus.NOT_FOUND);
+    }
+
+    const organizationIconFileName = `${organization.name}-icon`;
+
     try {
-      const updatedOrganization = this.prisma.organizationChild.update({
-        where: {
-          id,
-        },
-        data: updateOrganizationDto,
+      const result = await this.prisma.$transaction(async (prisma) => {
+        const uploadedIcon = await this.supabase.uploadFile(
+          icon,
+          organizationIconFileName,
+          process.env.SUPABASE_BUCKET_NAME!,
+        );
+
+        if (!uploadedIcon) {
+          throw new HttpException(
+            'Failed to upload Organization icon',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        const retrievedIconUrl = await this.supabase.getFileUrl(
+          organizationIconFileName,
+          process.env.SUPABASE_BUCKET_NAME!,
+        );
+
+        if (!retrievedIconUrl) {
+          throw new HttpException(
+            'Failed to retrieve Organization icon',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        const updatedOrganization = await prisma.organizationChild.update({
+          where: { id },
+          data: {
+            ...updateOrganizationDto,
+            ...(retrievedIconUrl !== organization.icon
+              ? { icon: retrievedIconUrl }
+              : {}),
+          },
+          include: this.getOrganizationIncludes(),
+        });
+
+        return updatedOrganization;
       });
 
-      return updatedOrganization;
+      return {
+        message: 'Organization updated successfully',
+        organization: result,
+      };
     } catch (error) {
       throw new HttpException(
-        'Failed to update organization',
+        error.message || 'Failed to update Organization icon',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
