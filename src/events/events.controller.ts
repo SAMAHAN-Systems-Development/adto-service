@@ -83,9 +83,7 @@ export class EventsController {
     @Body() updateEventDto: UpdateEventDto,
     @Request() req: any,
   ) {
-    const orgId = req.user.orgId;
-    console.log('Extracted orgId:', orgId); // Debugging log
-    return this.eventsService.update(id, updateEventDto, orgId);
+    return this.eventsService.update(id, updateEventDto, req.user);
   }
 
   @Patch(':id')

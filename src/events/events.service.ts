@@ -180,17 +180,25 @@ export class EventsService {
     }
   }
 
-  async update(id: string, updateEventDto: UpdateEventDto, orgId: string) {
-    const getEvent = await this.findOne(id);
+  async update(
+    id: string,
+    updateEventDto: UpdateEventDto,
+    user: { role: string; orgId: string },
+  ) {
+    const { role, orgId } = user;
 
-    if (!getEvent) {
-      throw new HttpException('Event not found', HttpStatus.NOT_FOUND);
+    const currentEvent = await this.findOne(id);
+
+    if (!currentEvent || currentEvent.deletedAt !== null) {
+      throw new HttpException(
+        'Event not found or has been deleted',
+        HttpStatus.NOT_FOUND,
+      );
     }
-    console.log(`${orgId} is trying to update event ${id}`);
-    console.log(`Event ${id} belongs to organization ${getEvent.orgId}`);
 
-    if (getEvent.orgId !== orgId) {
-      console.log('Unauthorized access attempt detected');
+    const hasPermission = role === 'ADMIN' || currentEvent.orgId === orgId;
+
+    if (!hasPermission) {
       throw new HttpException(
         'You are not authorized to update this event',
         HttpStatus.UNAUTHORIZED,
@@ -202,7 +210,7 @@ export class EventsService {
         where: {
           id,
         },
-        data: updateEventDto,
+        data: { ...updateEventDto, updatedAt: new Date(Date.now()) },
       });
 
       return {
