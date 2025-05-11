@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -180,8 +180,23 @@ export class EventsService {
     }
   }
 
-  async update(id: string, updateEventDto: UpdateEventDto) {
-    await this.findOne(id);
+  async update(id: string, updateEventDto: UpdateEventDto, orgId: string) {
+    const getEvent = await this.findOne(id);
+
+    if (!getEvent) {
+      throw new HttpException('Event not found', HttpStatus.NOT_FOUND);
+    }
+    console.log(`${orgId} is trying to update event ${id}`);
+    console.log(`Event ${id} belongs to organization ${getEvent.orgId}`);
+
+    if (getEvent.orgId !== orgId) {
+      console.log('Unauthorized access attempt detected');
+      throw new HttpException(
+        'You are not authorized to update this event',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
     try {
       const updatedEvent = await this.prisma.event.update({
         where: {

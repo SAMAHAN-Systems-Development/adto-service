@@ -6,10 +6,13 @@ import {
   Patch,
   Param,
   Query,
+  UseGuards,
+  Request,
 } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
+import { AuthGuard } from '../auth/auth.guard';
 
 @Controller('events')
 export class EventsController {
@@ -68,14 +71,21 @@ export class EventsController {
     return this.eventsService.findOne(id);
   }
 
-  @Patch(':id')
+  @Patch('/publish/:id')
   publish(@Param('id') id: string) {
     return this.eventsService.publishEvent(id);
   }
 
-  @Patch('/update/:id')
-  update(@Param('id') id: string, @Body() updateEventDto: UpdateEventDto) {
-    return this.eventsService.update(id, updateEventDto);
+  @UseGuards(AuthGuard)
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() updateEventDto: UpdateEventDto,
+    @Request() req: any,
+  ) {
+    const orgId = req.user.orgId;
+    console.log('Extracted orgId:', orgId); // Debugging log
+    return this.eventsService.update(id, updateEventDto, orgId);
   }
 
   @Patch(':id')
