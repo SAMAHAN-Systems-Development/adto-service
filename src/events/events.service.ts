@@ -210,10 +210,9 @@ export class EventsService {
         where: {
           id,
         },
-        data: { ...updateEventDto, updatedAt: new Date(Date.now()) },
+        data: updateEventDto,
       });
 
-      console.log('Updated Event:', updatedEvent);
       return {
         message: 'Event updated successfully',
         data: updatedEvent,
