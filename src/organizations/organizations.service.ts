@@ -137,7 +137,7 @@ export class OrganizationsService {
         const uploadedIcon = await this.supabase.uploadFile(
           icon,
           organizationIconFileName,
-          process.env.SUPABASE_BUCKET_NAME!,
+          process.env.ORGANIZATION_ICON_BUCKET!,
         );
 
         if (!uploadedIcon) {
@@ -149,7 +149,7 @@ export class OrganizationsService {
 
         const retrievedIconUrl = await this.supabase.getFileUrl(
           organizationIconFileName,
-          process.env.SUPABASE_BUCKET_NAME!,
+          process.env.ORGANIZATION_ICON_BUCKET!,
         );
 
         if (!retrievedIconUrl) {
@@ -167,7 +167,6 @@ export class OrganizationsService {
               ? { icon: retrievedIconUrl }
               : {}),
           },
-          include: this.getOrganizationIncludes(),
         });
 
         return updatedOrganization;

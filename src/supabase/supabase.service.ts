@@ -6,7 +6,7 @@ export class SupabaseService {
   private supabase: SupabaseClient;
   constructor() {
     const supabaseURL = process.env.API_URL!;
-    const supabaseAPIKey = process.env.ANON_KEY!;
+    const supabaseAPIKey = process.env.SERVICE_ROLE_KEY!;
     this.supabase = createClient(supabaseURL, supabaseAPIKey);
   }
 
@@ -21,7 +21,11 @@ export class SupabaseService {
   ) {
     const { data, error } = await this.supabase.storage
       .from(bucketName)
-      .upload(fileName, file.buffer);
+      .upload(fileName, file.buffer, {
+        contentType: file.mimetype,
+        upsert: true,
+      });
+
     if (error) {
       throw new Error(error.message);
     }
