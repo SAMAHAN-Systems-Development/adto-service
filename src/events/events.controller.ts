@@ -86,7 +86,7 @@ export class EventsController {
     return this.eventsService.update(id, updateEventDto, req.user);
   }
 
-  @Patch(':id')
+  @Patch('/delete/:id')
   softDelete(@Param('id') id: string) {
     return this.eventsService.softDelete(id);
   }
