@@ -213,6 +213,7 @@ export class EventsService {
         data: { ...updateEventDto, updatedAt: new Date(Date.now()) },
       });
 
+      console.log('Updated Event:', updatedEvent);
       return {
         message: 'Event updated successfully',
         data: updatedEvent,
