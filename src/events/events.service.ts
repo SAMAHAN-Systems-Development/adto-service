@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -180,8 +180,31 @@ export class EventsService {
     }
   }
 
-  async update(id: string, updateEventDto: UpdateEventDto) {
-    await this.findOne(id);
+  async update(
+    id: string,
+    updateEventDto: UpdateEventDto,
+    user: { role: string; orgId: string },
+  ) {
+    const { role, orgId } = user;
+
+    const currentEvent = await this.findOne(id);
+
+    if (!currentEvent || currentEvent.deletedAt !== null) {
+      throw new HttpException(
+        'Event not found or has been deleted',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const hasPermission = role === 'ADMIN' || currentEvent.orgId === orgId;
+
+    if (!hasPermission) {
+      throw new HttpException(
+        'You are not authorized to update this event',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
     try {
       const updatedEvent = await this.prisma.event.update({
         where: {

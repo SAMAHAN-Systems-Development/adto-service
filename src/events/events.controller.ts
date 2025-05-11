@@ -6,10 +6,13 @@ import {
   Patch,
   Param,
   Query,
+  UseGuards,
+  Request,
 } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
+import { AuthGuard } from '../auth/auth.guard';
 
 @Controller('events')
 export class EventsController {
@@ -68,17 +71,22 @@ export class EventsController {
     return this.eventsService.findOne(id);
   }
 
-  @Patch(':id')
+  @Patch('/publish/:id')
   publish(@Param('id') id: string) {
     return this.eventsService.publishEvent(id);
   }
 
+  @UseGuards(AuthGuard)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateEventDto: UpdateEventDto) {
-    return this.eventsService.update(id, updateEventDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateEventDto: UpdateEventDto,
+    @Request() req: any,
+  ) {
+    return this.eventsService.update(id, updateEventDto, req.user);
   }
 
-  @Patch(':id')
+  @Patch('/delete/:id')
   softDelete(@Param('id') id: string) {
     return this.eventsService.softDelete(id);
   }
