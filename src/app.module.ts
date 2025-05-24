@@ -21,7 +21,7 @@ import { UsersModule } from './users/users.module';
     OrganizationParentsModule,
     OrganizationsModule,
     PaymentsModule,
-    UsersModule,
+    UsersModule
   ],
   controllers: [AppController],
   providers: [AppService],
