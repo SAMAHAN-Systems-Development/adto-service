@@ -83,7 +83,7 @@ export class EventsController {
     return this.eventsService.softDelete(id);
   }
 
-  @Patch('/archive/:id')
+  @Patch('/:id/archive')
   archive(@Param('id') id: string) {
     return this.eventsService.archive(id);
   }
