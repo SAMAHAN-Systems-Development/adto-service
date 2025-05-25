@@ -9,10 +9,6 @@ import {
 export class CreateEventDto {
   @IsString()
   @IsNotEmpty()
-  id: string;
-
-  @IsString()
-  @IsNotEmpty()
   name: string;
 
   @IsString()
@@ -37,8 +33,4 @@ export class CreateEventDto {
   @IsBoolean()
   @IsOptional()
   isOpenToOutsiders?: boolean;
-
-  @IsString()
-  @IsNotEmpty()
-  orgId: string;
 }
