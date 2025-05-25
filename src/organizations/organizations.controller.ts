@@ -84,4 +84,9 @@ export class OrganizationsController {
   ) {
     return this.organizationsService.update(id, updateOrganizationDto);
   }
+
+  @Patch(':id/archive')
+  archiveOrganizationChild(@Param('id') id: string) {
+    return this.organizationsService.archiveOrganizationChild(id);
+  }
 }
