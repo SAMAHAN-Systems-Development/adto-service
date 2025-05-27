@@ -1,3 +1,4 @@
+// src/auth/auth.controller.ts
 import {
   Body,
   Controller,
@@ -5,34 +6,29 @@ import {
   HttpCode,
   HttpStatus,
   Post,
-  Request,
+  Req,
   Res,
   UseGuards,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-
 import { AuthService } from './auth.service';
+import { UserLoginDto } from './dto/user-login.dto';
+import { UserSignupDto } from './dto/user-signup.dto';
 import { AuthGuard } from './auth.guard';
 import { Public } from './public.decorator';
-import { UserLoginDto } from './dto/user-login.dto';
+import { Response, Request } from 'express';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('login')
   @UsePipes(new ValidationPipe({ whitelist: true }))
-  async signIn(@Body() loginDto: UserLoginDto, @Res() res) {
+  async login(@Body() loginDto: UserLoginDto, @Res() res: Response) {
     const { access_token } = await this.authService.loginUser(loginDto);
-
-    if (!access_token) {
-      return res.status(HttpStatus.UNAUTHORIZED).send({
-        message: 'Invalid credentials',
-      });
-    }
 
     res.cookie('token', access_token, {
       httpOnly: true,
@@ -45,16 +41,33 @@ export class AuthController {
   }
 
   @Public()
+  @HttpCode(HttpStatus.CREATED)
+  @Post('signup')
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  async signup(@Body() signupDto: UserSignupDto, @Res() res: Response) {
+    const { access_token } = await this.authService.registerUser(signupDto);
+
+    res.cookie('token', access_token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      path: '/',
+    });
+
+    return res.send({ message: 'Signup successful', auth_token: access_token });
+  }
+
+  @Public()
   @HttpCode(HttpStatus.OK)
   @Post('logout')
-  async signOut(@Res() res) {
+  async logout(@Res() res: Response) {
     res.clearCookie('token');
     return res.send({ message: 'Logout successful' });
   }
 
   @UseGuards(AuthGuard)
   @Get('profile')
-  getProfile(@Request() req) {
-    return req.user;
+  getProfile(@Req() req: Request) {
+    return req['user'];
   }
 }
