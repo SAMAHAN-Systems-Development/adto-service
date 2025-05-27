@@ -54,6 +54,7 @@ model OrganizationChild {
   twitter             String?
   linkedin            String?
   isAdmin             Boolean             @default(false)
+  isArchived          Boolean             @default(false)
   userId              String?             @unique
   user                User?               @relation(fields: [userId], references: [id])
   events              Event[]
