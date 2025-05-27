@@ -13,11 +13,12 @@ import { Prisma } from '@prisma/client';
 @Injectable()
 export class EventsService {
   constructor(private readonly prisma: PrismaService) {}
-  async create(createEventDto: CreateEventDto) {
-    const { orgId, ...eventDetails } = createEventDto;
+  async create(createEventDto: CreateEventDto, orgId: string) {
     const createdEvent = await this.prisma.event.create({
       data: {
-        ...eventDetails,
+        ...createEventDto,
+        dateStart: new Date(createEventDto.dateStart),
+        dateEnd: new Date(createEventDto.dateEnd),
         org: {
           connect: {
             id: orgId,
