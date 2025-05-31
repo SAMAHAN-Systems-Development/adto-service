@@ -143,6 +143,7 @@ model Event {
   isRegistrationRequired Boolean           @default(true) // Some registrations are open to public without registration
   isOpenToOutsiders      Boolean           @default(false) // Event is open to outsiders
   isPublished            Boolean           @default(false) // Event can be created but not published
+  isArchived             Boolean           @default(false) // Event is archived
   orgId                  String
   org                    OrganizationChild @relation(fields: [orgId], references: [id])
   registrations          Registration[]

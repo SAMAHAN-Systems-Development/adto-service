@@ -1,4 +1,10 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -248,6 +254,33 @@ export class EventsService {
         'Event could not be deleted',
         HttpStatus.BAD_REQUEST,
       );
+    }
+  }
+
+  async archive(id: string) {
+    try {
+      return {
+        message: 'Event archived successfully',
+        data: await this.prisma.event.update({
+          where: { id },
+          data: { isArchived: true },
+        }),
+      };
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException('Event not found', {
+          cause: error,
+          description: 'Id does not exist',
+        });
+      }
+
+      throw new InternalServerErrorException('Event could not be archived', {
+        cause: error,
+        description: 'An unexpected error occurred',
+      });
     }
   }
 }
