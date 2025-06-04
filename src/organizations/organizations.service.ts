@@ -1,4 +1,10 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -190,6 +196,27 @@ export class OrganizationsService {
       throw new HttpException(
         error.message || 'Failed to update Organization icon',
         HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async archiveOrganizationChild(id: string) {
+    if (!(await this.prisma.organizationChild.findFirst({ where: { id } }))) {
+      throw new NotFoundException('Organization child does not exist');
+    }
+
+    try {
+      return await this.prisma.organizationChild.update({
+        where: { id },
+        data: { isArchived: true },
+      });
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to archive organization child',
+        {
+          cause: error,
+          description: 'An unexpected error occurred',
+        },
       );
     }
   }
