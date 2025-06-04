@@ -28,9 +28,14 @@ enum UserType {
 }
 
 model OrganizationParent {
-  id                   String              @id @default(cuid())
-  name                 String
-  description          String
+  id                  String              @id @default(cuid())
+  name                String              @unique
+  acronym             String              @unique
+  icon                String
+  facebook            String?
+  instagram           String?
+  twitter             String?
+  linkedin            String?
   organizationChildren OrganizationGroup[]
 }
 
