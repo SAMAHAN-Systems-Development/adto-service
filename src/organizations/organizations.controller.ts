@@ -32,12 +32,16 @@ export class OrganizationsController {
     @Query('limit') limit?: number,
     @Query('searchFilter') searchFilter?: string,
     @Query('orderBy') orderBy?: 'asc' | 'desc',
+    @Query('active') active?: string,
   ) {
+    const isActive = active === undefined ? null : active === 'true';
+
     return this.organizationsService.findAll({
       page: Number(page) || 1,
       limit: Number(limit) || 10,
       searchFilter: searchFilter || undefined,
       orderBy: orderBy || 'asc',
+      active: isActive,
     });
   }
 

@@ -39,22 +39,38 @@ export class OrganizationsService {
     limit?: number;
     searchFilter?: string;
     orderBy?: 'asc' | 'desc';
+    active?: boolean;
   }) {
-    const { page = 1, limit = 10, searchFilter, orderBy = 'asc' } = query;
+    const {
+      page = 1,
+      limit = 10,
+      searchFilter,
+      orderBy = 'asc',
+      active,
+    } = query;
     const skip = (page - 1) * limit;
 
     const where = this.buildOrganizationSearchFilter(searchFilter);
 
+    if (active !== null) {
+      where.isArchived = !active;
+    }
+
     try {
-      const organizations = this.prisma.organizationChild.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: {
-          name: orderBy,
-        },
-        include: this.getOrganizationIncludes(),
-      });
+      const [organizations, total] = await Promise.all([
+        this.prisma.organizationChild.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: {
+            name: orderBy,
+          },
+          include: this.getOrganizationIncludes(),
+        }),
+        this.prisma.organizationChild.count({
+          where,
+        }),
+      ]);
 
       if (!organizations) {
         throw new HttpException(
@@ -63,7 +79,7 @@ export class OrganizationsService {
         );
       }
 
-      return organizations;
+      return { total, data: organizations };
     } catch (error) {
       throw new HttpException(
         'Error fetching organizations',
