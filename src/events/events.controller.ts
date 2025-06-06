@@ -6,18 +6,22 @@ import {
   Patch,
   Param,
   Query,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
+import { AuthGuard } from 'src/auth/auth.guard';
 
 @Controller('events')
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
   @Post()
-  create(@Body() createEventDto: CreateEventDto) {
-    return this.eventsService.create(createEventDto);
+  @UseGuards(AuthGuard)
+  create(@Body() createEventDto: CreateEventDto, @Req() req: any) {
+    return this.eventsService.create(createEventDto, req.user.orgId);
   }
 
   @Get('/published')
@@ -81,5 +85,10 @@ export class EventsController {
   @Patch(':id')
   softDelete(@Param('id') id: string) {
     return this.eventsService.softDelete(id);
+  }
+
+  @Patch('/:id/archive')
+  archive(@Param('id') id: string) {
+    return this.eventsService.archive(id);
   }
 }
