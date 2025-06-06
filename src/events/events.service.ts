@@ -178,7 +178,11 @@ export class EventsService {
         },
         include: {
           org: true,
-          registrations: true,
+          registrations: {
+            include: {
+              payment: true,
+            },
+          },
           ticketCategories: true,
           formQuestions: true,
         },
