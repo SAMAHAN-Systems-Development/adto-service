@@ -221,6 +221,49 @@ export class OrganizationsService {
     }
   }
 
+  //------------------------------------------------
+
+  async getOrganizationOverview() {
+
+    try {
+       
+      const totalOrganizations = await this.prisma.organizationChild.count();
+      const activeOrganizations = await this.prisma.organizationChild.count({
+      where: { isArchived: true },
+    });
+
+    const inactiveOrganizations = await this.prisma.organizationChild.count({
+      where: { isArchived: false },
+    });
+
+    if (totalOrganizations === 0 && 
+      activeOrganizations === 0 && 
+      inactiveOrganizations === 0
+    ) {
+      throw new NotFoundException('No organizations found');
+    }
+
+    return {
+        totalOrganizations,
+        activeOrganizations,
+        inactiveOrganizations,
+    };
+
+    } catch (error) {
+      console.error('Error fetching organization overview:', error);
+
+      if (error instanceof NotFoundException){
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        'Failed to fetch organization overview',);
+    }
+
+  }
+
+  //---------------------------------------------------------
+
   private buildOrganizationSearchFilter(
     searchFilter?: string,
   ): Prisma.OrganizationChildWhereInput {

@@ -53,6 +53,11 @@ export class OrganizationsController {
     });
   }
 
+  @Get('/overview')
+  getOrganizationsOverview() {
+    return this.organizationsService.getOrganizationOverview();
+  }
+
   @Patch('/uploadIcon/:id')
   @UseInterceptors(FileInterceptor('icon'))
   uploadOrganizationIcon(
