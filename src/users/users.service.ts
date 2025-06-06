@@ -27,6 +27,29 @@ export class UsersService {
     return newUser;
   }
 
+  async getCurrentBooker(id: string) {
+    // DO not include password in the response
+    try {
+      const currentBooker = await this.prismaService.user.findUnique({
+        where: {
+          id,
+        },
+        include: {
+          booker: {
+            include: {
+              registrations: true,
+              course: true,
+            },
+          },
+        },
+      });
+
+      return currentBooker;
+    } catch (error) {
+      console.error('Error fetching current booker:', error);
+    }
+  }
+
   async findAll() {
     const users = await this.prismaService.user.findMany({
       where: {

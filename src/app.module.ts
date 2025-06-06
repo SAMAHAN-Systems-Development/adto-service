@@ -10,6 +10,7 @@ import { OrganizationParentsModule } from './organization-parents/organization-p
 import { OrganizationsModule } from './organizations/organizations.module';
 import { PaymentsModule } from './payments/payments.module';
 import { UsersModule } from './users/users.module';
+import { EventAnnouncementsModule } from './event-announcements/event-announcements.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { UsersModule } from './users/users.module';
     OrganizationsModule,
     PaymentsModule,
     UsersModule,
+    EventAnnouncementsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
