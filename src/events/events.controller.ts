@@ -31,6 +31,7 @@ export class EventsController {
     @Query('isRegistrationOpen') isRegistrationOpen?: boolean,
     @Query('isRegistrationRequired') isRegistrationRequired?: boolean,
     @Query('isOpenToOutsiders') isOpenToOutsiders?: boolean,
+    @Query('organizationId') organizationId?: string,
     @Query('searchFilter') searchFilter?: string,
     @Query('orderBy') orderBy?: 'asc' | 'desc',
   ) {
@@ -41,6 +42,7 @@ export class EventsController {
       isRegistrationRequired: isRegistrationRequired || undefined,
       isOpenToOutsiders: isOpenToOutsiders || undefined,
       searchFilter: searchFilter || undefined,
+      organizationId: organizationId || undefined,
       orderBy: orderBy || 'asc',
     });
   }
