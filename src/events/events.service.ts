@@ -48,6 +48,7 @@ export class EventsService {
     isOpenToOutsiders?: boolean;
     searchFilter?: string;
     organizationId?: string;
+    organizationParentId?: string;
     orderBy?: 'asc' | 'desc';
   }) {
     const {
@@ -58,6 +59,7 @@ export class EventsService {
       isOpenToOutsiders,
       searchFilter,
       organizationId,
+      organizationParentId,
       orderBy = 'asc',
     } = query;
 
@@ -68,6 +70,15 @@ export class EventsService {
       ...(isRegistrationRequired && { isRegistrationRequired }),
       ...(isOpenToOutsiders && { isOpenToOutsiders }),
       ...(organizationId && { orgId: organizationId }),
+      ...(organizationParentId && {
+        org: {
+          organizationParents: {
+            some: {
+              organizationParentId: organizationParentId,
+            },
+          },
+        },
+      }),
       ...(searchFilter && {
         OR: [
           { name: { contains: searchFilter, mode: 'insensitive' } },
