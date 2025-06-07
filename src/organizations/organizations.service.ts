@@ -63,7 +63,35 @@ export class OrganizationsService {
         );
       }
 
-      return organizations;
+      return {
+        message: 'Organizations fetched successfully',
+        data: organizations,
+        page,
+        limit,
+      };
+    } catch (error) {
+      throw new HttpException(
+        'Error fetching organizations',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async findAllOrganizationsWithoutFilters() {
+    try {
+      const organizations = await this.prisma.organizationChild.findMany();
+
+      if (!organizations) {
+        throw new HttpException(
+          'Organizations not found',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      return {
+        message: 'Organizations fetched successfully',
+        data: organizations,
+      };
     } catch (error) {
       throw new HttpException(
         'Error fetching organizations',
