@@ -41,6 +41,11 @@ export class OrganizationsController {
     });
   }
 
+  @Get('/all')
+  findAllOrganizationsWithoutFilters() {
+    return this.organizationsService.findAllOrganizationsWithoutFilters();
+  }
+
   @Get('/organizationParent/:id')
   findAllByOrganizationParent(
     @Param('id') id: string,

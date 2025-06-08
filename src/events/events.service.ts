@@ -47,6 +47,8 @@ export class EventsService {
     isRegistrationRequired?: boolean;
     isOpenToOutsiders?: boolean;
     searchFilter?: string;
+    organizationId?: string;
+    organizationParentId?: string;
     orderBy?: 'asc' | 'desc';
   }) {
     const {
@@ -56,6 +58,8 @@ export class EventsService {
       isRegistrationRequired,
       isOpenToOutsiders,
       searchFilter,
+      organizationId,
+      organizationParentId,
       orderBy = 'asc',
     } = query;
 
@@ -65,6 +69,16 @@ export class EventsService {
       ...(isRegistrationOpen && { isRegistrationOpen }),
       ...(isRegistrationRequired && { isRegistrationRequired }),
       ...(isOpenToOutsiders && { isOpenToOutsiders }),
+      ...(organizationId && { orgId: organizationId }),
+      ...(organizationParentId && {
+        org: {
+          organizationParents: {
+            some: {
+              organizationParentId: organizationParentId,
+            },
+          },
+        },
+      }),
       ...(searchFilter && {
         OR: [
           { name: { contains: searchFilter, mode: 'insensitive' } },
@@ -175,7 +189,11 @@ export class EventsService {
         },
         include: {
           org: true,
-          registrations: true,
+          registrations: {
+            include: {
+              payment: true,
+            },
+          },
           ticketCategories: true,
           formQuestions: true,
         },

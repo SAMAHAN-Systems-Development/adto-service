@@ -1,15 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import { CreateOrganizationParentDto } from './dto/create-organization-parent.dto';
 import { UpdateOrganizationParentDto } from './dto/update-organization-parent.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class OrganizationParentsService {
+  constructor(private readonly prisma: PrismaService) {}
   create(createOrganizationParentDto: CreateOrganizationParentDto) {
     return 'This action adds a new organizationParent';
   }
 
-  findAll() {
-    return `This action returns all organizationParents`;
+  async findAll() {
+    const organizationParents = await this.prisma.organizationParent.findMany();
+
+    if (!organizationParents) {
+      return {
+        message: 'No organization parents found',
+      };
+    }
+
+    return organizationParents;
   }
 
   findOne(id: number) {
