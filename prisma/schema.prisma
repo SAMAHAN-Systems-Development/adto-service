@@ -13,14 +13,6 @@ datasource db {
   url      = env("DB_URL")
 }
 
-enum FormElements {
-  TEXT
-  TEXTAREA
-  RADIO
-  CHECKBOX
-  SELECT
-}
-
 enum UserType {
   ADMIN
   ORGANIZATION
@@ -120,7 +112,6 @@ model Registration {
   booker           Booker         @relation(fields: [bookerId], references: [id])
   event            Event          @relation(fields: [eventId], references: [id])
   payment          Payment?
-  formAnswers      FormAnswers[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 }
@@ -154,7 +145,6 @@ model Event {
   org                    OrganizationChild    @relation(fields: [orgId], references: [id])
   registrations          Registration[]
   ticketCategories       TicketCategory[]
-  formQuestions          FormQuestions[]
   eventAnnouncements     EventAnnouncements[]
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
@@ -170,37 +160,4 @@ model EventAnnouncements {
   content          String
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
-}
-
-model FormAnswers {
-  id             String        @id @default(cuid())
-  answer         String
-  formQuestionId String
-  formQuestion   FormQuestions @relation(fields: [formQuestionId], references: [id])
-  registrationId String
-  registration   Registration  @relation(fields: [registrationId], references: [id])
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-}
-
-model FormQuestionChoices {
-  id             String        @id @default(cuid())
-  choice         String
-  formQuestionId String
-  formQuestion   FormQuestions @relation(fields: [formQuestionId], references: [id])
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-}
-
-model FormQuestions {
-  id                  String                @id @default(cuid())
-  question            String
-  eventId             String
-  event               Event                 @relation(fields: [eventId], references: [id])
-  formElementId       String
-  formElement         FormElements
-  formQuestionChoices FormQuestionChoices[]
-  formAnswers         FormAnswers[]
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
 }

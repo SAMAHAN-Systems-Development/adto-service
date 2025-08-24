@@ -144,7 +144,6 @@ export class OrganizationsService {
           include: {
             registrations: true,
             ticketCategories: true,
-            formQuestions: true,
           },
         },
       },
@@ -279,7 +278,6 @@ export class OrganizationsService {
         include: {
           registrations: true,
           ticketCategories: true,
-          formQuestions: true,
         },
       },
     };
