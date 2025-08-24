@@ -195,7 +195,6 @@ export class EventsService {
             },
           },
           ticketCategories: true,
-          formQuestions: true,
         },
       });
 

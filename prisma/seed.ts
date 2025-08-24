@@ -8,9 +8,6 @@ async function main() {
 
   // --- Clear existing data (optional, use with caution) ---
   // Order matters due to foreign key constraints
-  await prisma.formAnswers.deleteMany();
-  await prisma.formQuestionChoices.deleteMany();
-  await prisma.formQuestions.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.registration.deleteMany();
   await prisma.ticketCategory.deleteMany();
