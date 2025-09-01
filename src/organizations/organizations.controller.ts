@@ -11,6 +11,8 @@ import {
   MaxFileSizeValidator,
   FileTypeValidator,
   Query,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
@@ -22,6 +24,7 @@ export class OrganizationsController {
   constructor(private readonly organizationsService: OrganizationsService) {}
 
   @Post()
+  @HttpCode(HttpStatus.CREATED)
   create(@Body() createOrganizationDto: CreateOrganizationDto) {
     return this.organizationsService.create(createOrganizationDto);
   }

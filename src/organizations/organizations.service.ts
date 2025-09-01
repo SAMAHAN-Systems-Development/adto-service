@@ -9,7 +9,8 @@ import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { SupabaseService } from 'src/supabase/supabase.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, UserType } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class OrganizationsService {
@@ -19,20 +20,87 @@ export class OrganizationsService {
   ) {}
 
   async create(createOrganizationDto: CreateOrganizationDto) {
-    try {
-      const createdOrganization = this.prisma.organizationChild.create({
-        data: {
-          ...createOrganizationDto,
-        },
-      });
-      return createdOrganization;
-    } catch (error) {
+  const { email, password, ...organizationData } = createOrganizationDto;
+
+  try {
+    // Validate required fields
+    if (!organizationData.name || !email) {
       throw new HttpException(
-        'Failed to create organization',
-        HttpStatus.INTERNAL_SERVER_ERROR,
+        'Name and email are required fields',
+        HttpStatus.BAD_REQUEST,
       );
     }
+
+    // Check if email already exists
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      throw new HttpException(
+        'Email already exists',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    return await this.prisma.$transaction(async (prisma) => {
+      // Create user account if email and password provided
+      let userId = null;
+      if (email && password) {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+        
+        const user = await prisma.user.create({
+          data: {
+            email,
+            password: hashedPassword,
+            userType: UserType.ORGANIZATION,
+            isActive: true,
+          },
+        });
+        userId = user.id;
+      }
+
+      // Create organization
+      const createdOrganization = await prisma.organizationChild.create({
+        data: {
+          ...organizationData,
+          userId,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              userType: true,
+              isActive: true,
+            },
+          },
+          organizationParents: {
+            include: {
+              organizationParent: true,
+            },
+          },
+        },
+      });
+
+      return {
+        message: 'Organization created successfully',
+        data: createdOrganization,
+        statusCode: HttpStatus.CREATED,
+      };
+    });
+  } catch (error) {
+    if (error instanceof HttpException) {
+      throw error;
+    }
+    
+    throw new HttpException(
+      'Failed to create organization',
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
   }
+}
 
   async findAll(query: {
     page?: number;
