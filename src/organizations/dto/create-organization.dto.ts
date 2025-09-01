@@ -13,7 +13,7 @@ export class CreateOrganizationDto {
 
   @IsString()
   @IsOptional()
-  password: string;
+  password?: string;
 
   @IsOptional()
   @IsString()
