@@ -86,6 +86,7 @@ export class OrganizationsController {
   }
 
   @Patch(':id')
+  @HttpCode(HttpStatus.OK)
   update(
     @Param('id') id: string,
     @Body() updateOrganizationDto: UpdateOrganizationDto,
@@ -94,6 +95,7 @@ export class OrganizationsController {
   }
 
   @Patch(':id/archive')
+  @HttpCode(HttpStatus.OK)
   archiveOrganizationChild(@Param('id') id: string) {
     return this.organizationsService.archiveOrganizationChild(id);
   }
