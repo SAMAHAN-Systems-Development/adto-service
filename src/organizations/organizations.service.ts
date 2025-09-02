@@ -221,16 +221,28 @@ export class OrganizationsService {
   }
 
   async update(id: string, updateOrganizationDto: UpdateOrganizationDto) {
-    await this.findOneById(id);
+    const currentOrganization = await this.findOneById(id);
+
+    if(!currentOrganization){
+      throw new HttpException(
+        'Organization not found',
+        HttpStatus.NOT_FOUND
+      );
+    }
+
     try {
-      const updatedOrganization = this.prisma.organizationChild.update({
+      const updatedOrganization = await this.prisma.organizationChild.update({
         where: {
           id,
         },
         data: updateOrganizationDto,
       });
 
-      return updatedOrganization;
+      return {
+        message: 'Organization updated successfully',
+        data: updatedOrganization,
+        statusCode: HttpStatus.OK,
+      };
     } catch (error) {
       throw new HttpException(
         'Failed to update organization',
