@@ -342,6 +342,76 @@ export class OrganizationsService {
     }
   }
 
+
+  async findArchivedOrganizations(query: {
+    page?: number;
+    limit?: number;
+    searchFilter?: string;
+    orderBy?: 'asc' | 'desc';
+  }) {
+    const { page = 1, limit = 10, searchFilter, orderBy = 'asc' } = query;
+    const skip = (page - 1) * limit;
+
+    const where = {
+      ...this.buildOrganizationSearchFilter(searchFilter),
+      isArchived: true, 
+    };
+
+    try {
+      const organizations = await this.prisma.organizationChild.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: {
+          name: orderBy,
+        },
+        include: this.getOrganizationIncludes(),
+      });
+
+      return {
+        message: 'Archived organizations fetched successfully',
+        data: organizations,
+        page,
+        limit,
+      };
+    } catch (error) {
+      throw new HttpException(
+        'Error fetching archived organizations',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async unarchiveOrganizationChild(id: string) {
+    const currentOrganization = await this.findOneById(id);
+
+    if (!currentOrganization) {
+      throw new HttpException(
+        'Organization not found',
+        HttpStatus.NOT_FOUND
+      );
+    }
+
+    try {
+      const unarchivedOrganization = await this.prisma.organizationChild.update({
+        where: { id },
+        data: { isArchived: false },
+      });
+
+      return {
+        message: 'Organization unarchived successfully',
+        data: unarchivedOrganization,
+        statusCode: HttpStatus.OK,
+      };
+    } catch (error) {
+      throw new HttpException(
+        'Failed to unarchive organization',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+
   private buildOrganizationSearchFilter(
     searchFilter?: string,
   ): Prisma.OrganizationChildWhereInput {
