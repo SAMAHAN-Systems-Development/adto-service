@@ -92,10 +92,6 @@ export class OrganizationsService {
       };
     });
   } catch (error) {
-    if (error instanceof HttpException) {
-      throw error;
-    }
-    
     throw new HttpException(
       'Failed to create organization',
       HttpStatus.INTERNAL_SERVER_ERROR,
@@ -112,7 +108,9 @@ export class OrganizationsService {
     const { page = 1, limit = 10, searchFilter, orderBy = 'asc' } = query;
     const skip = (page - 1) * limit;
 
-    const where = this.buildOrganizationSearchFilter(searchFilter);
+    const where = {...this.buildOrganizationSearchFilter(searchFilter),
+      isArchived: false
+    };
 
     try {
       const organizations = this.prisma.organizationChild.findMany({
@@ -148,7 +146,11 @@ export class OrganizationsService {
 
   async findAllOrganizationsWithoutFilters() {
     try {
-      const organizations = await this.prisma.organizationChild.findMany();
+      const organizations = await this.prisma.organizationChild.findMany({
+        where: {
+          isArchived: false,
+        },
+      });
 
       if (!organizations) {
         throw new HttpException(
@@ -183,6 +185,9 @@ export class OrganizationsService {
       const organizations = this.prisma.organizationGroup.findMany({
         where: {
           organizationParentId,
+          organizationChild: {
+            isArchived: false,
+          },
         },
         skip,
         take: limit,
