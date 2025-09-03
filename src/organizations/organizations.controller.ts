@@ -13,16 +13,19 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { AuthGuard } from 'src/auth/auth.guard'; 
 
 @Controller('organizations')
 export class OrganizationsController {
   constructor(private readonly organizationsService: OrganizationsService) {}
 
+  @UseGuards(AuthGuard)
   @Post()
   @HttpCode(HttpStatus.CREATED)
   create(@Body() createOrganizationDto: CreateOrganizationDto) {
@@ -44,6 +47,7 @@ export class OrganizationsController {
     });
   }
 
+  
   @Get('/all')
   findAllOrganizationsWithoutFilters() {
     return this.organizationsService.findAllOrganizationsWithoutFilters();
@@ -61,6 +65,7 @@ export class OrganizationsController {
     });
   }
 
+  @UseGuards(AuthGuard)
   @Patch('/uploadIcon/:id')
   @UseInterceptors(FileInterceptor('icon'))
   uploadOrganizationIcon(
@@ -85,6 +90,7 @@ export class OrganizationsController {
     return this.organizationsService.findOneById(id);
   }
 
+  @UseGuards(AuthGuard)
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
   update(
@@ -94,6 +100,7 @@ export class OrganizationsController {
     return this.organizationsService.update(id, updateOrganizationDto);
   }
 
+  @UseGuards(AuthGuard)
   @Patch(':id/archive')
   @HttpCode(HttpStatus.OK)
   archiveOrganizationChild(@Param('id') id: string) {

@@ -1,6 +1,7 @@
 import {
   HttpException,
   HttpStatus,
+  UseGuards,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -308,23 +309,31 @@ export class OrganizationsService {
   }
 
   async archiveOrganizationChild(id: string) {
-    if (!(await this.prisma.organizationChild.findFirst({ where: { id } }))) {
-      throw new NotFoundException('Organization child does not exist');
+    const currentOrganization = await this.findOneById(id);
+
+    if (!currentOrganization) {
+      throw new HttpException(
+        'Organization not found',
+        HttpStatus.NOT_FOUND
+      );
     }
 
     try {
-      return await this.prisma.organizationChild.update({
-        where: { id },
-        data: { isArchived: true },
-      });
-    } catch (error) {
-      throw new InternalServerErrorException(
-        'Failed to archive organization child',
-        {
-          cause: error,
-          description: 'An unexpected error occurred',
-        },
-      );
+      const archivedOrganization = await this.prisma.organizationChild.update({
+      where: { id },
+      data: { isArchived: true },
+    });
+
+    return {
+      message: 'Organization archived successfully',
+      data: archivedOrganization,
+      statusCode: HttpStatus.OK,
+    };
+  } catch (error) {
+    throw new HttpException(
+      'Failed to archive organization',
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
     }
   }
 
