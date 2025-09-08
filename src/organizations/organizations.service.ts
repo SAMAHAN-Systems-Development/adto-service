@@ -24,7 +24,7 @@ export class OrganizationsService {
   const { email, password, ...organizationData } = createOrganizationDto;
 
   try {
-    // Validate required fields
+    
     if (!organizationData.name || !email) {
       throw new HttpException(
         'Name and email are required fields',
@@ -32,7 +32,7 @@ export class OrganizationsService {
       );
     }
 
-    // Check if email already exists
+    
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
     });
@@ -45,7 +45,6 @@ export class OrganizationsService {
     }
 
     return await this.prisma.$transaction(async (prisma) => {
-      // Create user account if email and password provided
       let userId = null;
       if (email && password) {
         const salt = await bcrypt.genSalt(10);
@@ -62,7 +61,6 @@ export class OrganizationsService {
         userId = user.id;
       }
 
-      // Create organization
       const createdOrganization = await prisma.organizationChild.create({
         data: {
           ...organizationData,
