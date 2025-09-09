@@ -23,15 +23,13 @@ export class OrganizationsService {
   async create(createOrganizationDto: CreateOrganizationDto) {
   const { email, password, ...organizationData } = createOrganizationDto;
 
-  try {
-    
-    if (!organizationData.name || !email) {
+  if (!organizationData.name || !email) {
       throw new HttpException(
         'Name and email are required fields',
         HttpStatus.BAD_REQUEST,
       );
-    }
-
+  }
+  try {
     
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
@@ -90,6 +88,10 @@ export class OrganizationsService {
       };
     });
   } catch (error) {
+    if (error instanceof HttpException) {
+      throw error;
+    }
+
     throw new HttpException(
       'Failed to create organization',
       HttpStatus.INTERNAL_SERVER_ERROR,
@@ -111,7 +113,7 @@ export class OrganizationsService {
     };
 
     try {
-      const organizations = this.prisma.organizationChild.findMany({
+      const organizations = await this.prisma.organizationChild.findMany({
         where,
         skip,
         take: limit,
@@ -135,6 +137,10 @@ export class OrganizationsService {
         limit,
       };
     } catch (error) {
+      
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new HttpException(
         'Error fetching organizations',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -180,7 +186,7 @@ export class OrganizationsService {
     const skip = (page - 1) * limit;
 
     try {
-      const organizations = this.prisma.organizationGroup.findMany({
+      const organizations = await this.prisma.organizationGroup.findMany({
         where: {
           organizationParentId,
           organizationChild: {
@@ -198,6 +204,11 @@ export class OrganizationsService {
 
       return organizations;
     } catch (error) {
+      
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       throw new HttpException(
         'Error fetching organizations',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -206,7 +217,7 @@ export class OrganizationsService {
   }
 
   async findOneById(id: string) {
-    const organization = this.prisma.organizationChild.findUnique({
+    const organization = await this.prisma.organizationChild.findUnique({
       where: {
         id,
       },
@@ -248,6 +259,10 @@ export class OrganizationsService {
         statusCode: HttpStatus.OK,
       };
     } catch (error) {
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new HttpException(
         'Failed to update organization',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -304,6 +319,11 @@ export class OrganizationsService {
         organization: result,
       };
     } catch (error) {
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       throw new HttpException(
         error.message || 'Failed to update Organization icon',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -419,6 +439,10 @@ export class OrganizationsService {
       statusCode: HttpStatus.OK,
     };
   } catch (error) {
+
+     if (error instanceof HttpException) {
+      throw error;
+    }
     const action = isArchived ? 'archive' : 'unarchive';
     throw new HttpException(
       `Failed to ${action} organization`,
