@@ -312,32 +312,7 @@ export class OrganizationsService {
   }
 
   async archiveOrganizationChild(id: string) {
-    const currentOrganization = await this.findOneById(id);
-
-    if (!currentOrganization) {
-      throw new HttpException(
-        'Organization not found',
-        HttpStatus.NOT_FOUND
-      );
-    }
-
-    try {
-      const archivedOrganization = await this.prisma.organizationChild.update({
-      where: { id },
-      data: { isArchived: true },
-    });
-
-    return {
-      message: 'Organization archived successfully',
-      data: archivedOrganization,
-      statusCode: HttpStatus.OK,
-    };
-  } catch (error) {
-    throw new HttpException(
-      'Failed to archive organization',
-      HttpStatus.INTERNAL_SERVER_ERROR,
-    );
-    }
+    return this.updateArchiveStatus(id, true);
   }
 
 
@@ -381,32 +356,7 @@ export class OrganizationsService {
   }
 
   async unarchiveOrganizationChild(id: string) {
-    const currentOrganization = await this.findOneById(id);
-
-    if (!currentOrganization) {
-      throw new HttpException(
-        'Organization not found',
-        HttpStatus.NOT_FOUND
-      );
-    }
-
-    try {
-      const unarchivedOrganization = await this.prisma.organizationChild.update({
-        where: { id },
-        data: { isArchived: false },
-      });
-
-      return {
-        message: 'Organization unarchived successfully',
-        data: unarchivedOrganization,
-        statusCode: HttpStatus.OK,
-      };
-    } catch (error) {
-      throw new HttpException(
-        'Failed to unarchive organization',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
-    }
+    return this.updateArchiveStatus(id, false);
   }
 
 
@@ -444,4 +394,38 @@ export class OrganizationsService {
       },
     };
   }
+
+  private async updateArchiveStatus(id: string, isArchived: boolean) {
+  const currentOrganization = await this.findOneById(id);
+
+  if (!currentOrganization) {
+    throw new HttpException(
+      'Organization not found',
+      HttpStatus.NOT_FOUND
+    );
+  }
+
+  try {
+    const updatedOrganization = await this.prisma.organizationChild.update({
+      where: { id },
+      data: { isArchived },
+    });
+
+    const action = isArchived ? 'archived' : 'unarchived';
+    
+    return {
+      message: `Organization ${action} successfully`,
+      data: updatedOrganization,
+      statusCode: HttpStatus.OK,
+    };
+  } catch (error) {
+    const action = isArchived ? 'archive' : 'unarchive';
+    throw new HttpException(
+      `Failed to ${action} organization`,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
 }
+}
+
+

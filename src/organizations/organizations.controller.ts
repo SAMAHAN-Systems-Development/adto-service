@@ -106,4 +106,11 @@ export class OrganizationsController {
   archiveOrganizationChild(@Param('id') id: string) {
     return this.organizationsService.archiveOrganizationChild(id);
   }
+
+  @UseGuards(AuthGuard)
+  @Patch(':id/unarchive')
+  @HttpCode(HttpStatus.OK)
+  unarchiveOrganizationChild(@Param('id') id: string) {
+    return this.organizationsService.unarchiveOrganizationChild(id);
+  }
 }
