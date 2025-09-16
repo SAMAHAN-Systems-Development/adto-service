@@ -12,7 +12,11 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class EventsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService
+  ) {}
+
+  // CREATE FUNCITON ---------------------------------------------------------------------------
   async create(createEventDto: CreateEventDto, orgId: string) {
     const createdEvent = await this.prisma.event.create({
       data: {
@@ -40,6 +44,7 @@ export class EventsService {
     };
   }
 
+  // FIND ALL FUNCTION ---------------------------------------------------------------------------
   async findAll(query: {
     page?: number;
     limit?: number;
