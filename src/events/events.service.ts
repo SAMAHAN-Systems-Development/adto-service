@@ -277,31 +277,56 @@ export class EventsService {
     }
   }
 
+// PUBLISH FUNCTION ---------------------------------------------------------------------------
+  async publishEvent(id: string) {
+    await this.findOne(id);
+    try {
+      const publishedEvent = await this.prisma.event.update({
+        where: {
+          id,
+        },
+        data: {
+          isPublished: true,
+        },
+      });
 
-
-  // async publishEvent(id: string) {
-  //   await this.findOne(id);
-  //   try {
-  //     const publishedEvent = await this.prisma.event.update({
-  //       where: {
-  //         id,
-  //       },
-  //       data: {
-  //         isPublished: true,
-  //       },
-  //     });
-
-  //     return {
-  //       message: 'Event published successfully',
-  //       data: publishedEvent,
-  //     };
-  //   } catch (error) {
-  //     throw new HttpException(
-  //       'Event could not be published',
-  //       HttpStatus.BAD_REQUEST,
-  //     );
-  //   }
-  // }
+      return {
+        message: 'Event published successfully',
+        data: publishedEvent,
+      };
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2025') {
+          throw new NotFoundException('Event not found', {
+            cause: error,
+            description: 'The event with the provided ID does not exist',
+          });
+        }
+        if (error.code === 'P2002') {
+          throw new HttpException(
+            'Event publish failed due to constraint violation',
+            HttpStatus.CONFLICT,
+          );
+        }
+      }
+      if (error instanceof Prisma.PrismaClientValidationError) {
+        throw new HttpException(
+          'Invalid data provided for event publish',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Event could not be published',
+        {
+          cause: error,
+          description: 'An unexpected error occurred',
+        },
+      );
+    }
+  }
 
   // SOFT DELETE FUNCTION ---------------------------------------------------------------------------
   async softDelete(id: string) {

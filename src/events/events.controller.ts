@@ -71,20 +71,10 @@ export class EventsController {
     });
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.eventsService.findOne(id);
-  }
-
-  // @Patch(':id')
-  // publish(@Param('id') id: string) {
-  //   return this.eventsService.publishEvent(id);
-  // }
-
-  @Patch(':id')
+  @Patch('/:id/publish')
   @UseGuards(AuthGuard)
-  update(@Param('id') id: string, @Body() updateEventDto: UpdateEventDto) {
-    return this.eventsService.update(id, updateEventDto);
+  publish(@Param('id') id: string) {
+    return this.eventsService.publishEvent(id);
   }
 
   @Patch('/:id/soft-delete')
@@ -98,4 +88,17 @@ export class EventsController {
   archive(@Param('id') id: string) {
     return this.eventsService.archive(id);
   }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.eventsService.findOne(id);
+  }
+
+  @Patch(':id')
+  @UseGuards(AuthGuard)
+  update(@Param('id') id: string, @Body() updateEventDto: UpdateEventDto) {
+    return this.eventsService.update(id, updateEventDto);
+  }
+
+
 }
