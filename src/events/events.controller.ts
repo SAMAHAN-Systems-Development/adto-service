@@ -82,16 +82,19 @@ export class EventsController {
   // }
 
   @Patch(':id')
+  @UseGuards(AuthGuard)
   update(@Param('id') id: string, @Body() updateEventDto: UpdateEventDto) {
     return this.eventsService.update(id, updateEventDto);
   }
 
-  @Patch(':id')
+  @Patch('/:id/soft-delete')
+  @UseGuards(AuthGuard)
   softDelete(@Param('id') id: string) {
     return this.eventsService.softDelete(id);
   }
 
   @Patch('/:id/archive')
+  @UseGuards(AuthGuard)
   archive(@Param('id') id: string) {
     return this.eventsService.archive(id);
   }

@@ -278,31 +278,32 @@ export class EventsService {
   }
 
 
-  
-  async publishEvent(id: string) {
-    await this.findOne(id);
-    try {
-      const publishedEvent = await this.prisma.event.update({
-        where: {
-          id,
-        },
-        data: {
-          isPublished: true,
-        },
-      });
 
-      return {
-        message: 'Event published successfully',
-        data: publishedEvent,
-      };
-    } catch (error) {
-      throw new HttpException(
-        'Event could not be published',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-  }
+  // async publishEvent(id: string) {
+  //   await this.findOne(id);
+  //   try {
+  //     const publishedEvent = await this.prisma.event.update({
+  //       where: {
+  //         id,
+  //       },
+  //       data: {
+  //         isPublished: true,
+  //       },
+  //     });
 
+  //     return {
+  //       message: 'Event published successfully',
+  //       data: publishedEvent,
+  //     };
+  //   } catch (error) {
+  //     throw new HttpException(
+  //       'Event could not be published',
+  //       HttpStatus.BAD_REQUEST,
+  //     );
+  //   }
+  // }
+
+  // SOFT DELETE FUNCTION ---------------------------------------------------------------------------
   async softDelete(id: string) {
     await this.findOne(id);
     try {
@@ -320,14 +321,36 @@ export class EventsService {
         data: deletedEvent,
       };
     } catch (error) {
-      throw new HttpException(
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2025') {
+          throw new NotFoundException('Event not found', {
+            cause: error,
+            description: 'The event with the provided ID does not exist',
+          });
+        }
+      }
+      if (error instanceof Prisma.PrismaClientValidationError) {
+        throw new HttpException(
+          'Invalid data provided for event deletion',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
         'Event could not be deleted',
-        HttpStatus.BAD_REQUEST,
+        {
+          cause: error,
+          description: 'An unexpected error occurred',
+        },
       );
     }
   }
 
+  // ARCHIVE FUNCTION ---------------------------------------------------------------------------
   async archive(id: string) {
+    await this.findOne(id);
     try {
       return {
         message: 'Event archived successfully',
