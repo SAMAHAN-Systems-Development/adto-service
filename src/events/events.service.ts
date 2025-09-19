@@ -121,6 +121,8 @@ export class EventsService {
     };
   }
 
+
+  // FIND ALL by ORGANIZATION CHILD FUNCTION ---------------------------------------------------------------------------
   async findAllByOrganizationChild(
     orgId: string,
     query: {
@@ -209,14 +211,25 @@ export class EventsService {
     }
   }
 
+  // UPDATE FUNCTION ---------------------------------------------------------------------------
   async update(id: string, updateEventDto: UpdateEventDto) {
-    await this.findOne(id);
     try {
+      // Check if event exists first
+      await this.findOne(id);
+
       const updatedEvent = await this.prisma.event.update({
         where: {
           id,
         },
-        data: updateEventDto,
+        data: {
+          ...updateEventDto,
+          // Convert date strings to Date objects if they exist
+          ...(updateEventDto.dateStart && { dateStart: new Date(updateEventDto.dateStart) }),
+          ...(updateEventDto.dateEnd && { dateEnd: new Date(updateEventDto.dateEnd) }),
+        },
+        include: {
+          org: true,
+        },
       });
 
       return {
@@ -224,13 +237,48 @@ export class EventsService {
         data: updatedEvent,
       };
     } catch (error) {
-      throw new HttpException(
-        'Event could not be updated',
-        HttpStatus.BAD_REQUEST,
+      // Handle specific Prisma errors
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2025') {
+          throw new NotFoundException('Event not found', {
+            cause: error,
+            description: 'The event with the provided ID does not exist',
+          });
+        }
+        if (error.code === 'P2002') {
+          throw new HttpException(
+            'Event update failed due to constraint violation',
+            HttpStatus.CONFLICT,
+          );
+        }
+      }
+
+      // Handle validation errors
+      if (error instanceof Prisma.PrismaClientValidationError) {
+        throw new HttpException(
+          'Invalid data provided for event update',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Re-throw HTTP exceptions from findOne
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      // Generic error for unexpected cases
+      throw new InternalServerErrorException(
+        'An unexpected error occurred while updating the event',
+        {
+          cause: error,
+          description: 'Please try again or contact support if the issue persists',
+        },
       );
     }
   }
 
+
+  
   async publishEvent(id: string) {
     await this.findOne(id);
     try {

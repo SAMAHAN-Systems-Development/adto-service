@@ -76,10 +76,10 @@ export class EventsController {
     return this.eventsService.findOne(id);
   }
 
-  @Patch(':id')
-  publish(@Param('id') id: string) {
-    return this.eventsService.publishEvent(id);
-  }
+  // @Patch(':id')
+  // publish(@Param('id') id: string) {
+  //   return this.eventsService.publishEvent(id);
+  // }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateEventDto: UpdateEventDto) {
