@@ -16,7 +16,8 @@ export class EventsService {
     private readonly prisma: PrismaService
   ) {}
 
-  // CREATE FUNCITON ---------------------------------------------------------------------------
+  
+
   async create(createEventDto: CreateEventDto, orgId: string) {
     const createdEvent = await this.prisma.event.create({
       data: {
@@ -44,7 +45,7 @@ export class EventsService {
     };
   }
 
-  // FIND ALL FUNCTION ---------------------------------------------------------------------------
+
   async findAll(query: {
     page?: number;
     limit?: number;
@@ -122,7 +123,6 @@ export class EventsService {
   }
 
 
-  // FIND ALL by ORGANIZATION CHILD FUNCTION ---------------------------------------------------------------------------
   async findAllByOrganizationChild(
     orgId: string,
     query: {
@@ -211,12 +211,11 @@ export class EventsService {
     }
   }
 
-  // UPDATE FUNCTION ---------------------------------------------------------------------------
   async update(id: string, updateEventDto: UpdateEventDto) {
+    
+    await this.findOne(id);
+    
     try {
-      // Check if event exists first
-      await this.findOne(id);
-
       const updatedEvent = await this.prisma.event.update({
         where: {
           id,
@@ -277,7 +276,7 @@ export class EventsService {
     }
   }
 
-// PUBLISH FUNCTION ---------------------------------------------------------------------------
+
   async publishEvent(id: string) {
     await this.findOne(id);
     try {
@@ -328,7 +327,8 @@ export class EventsService {
     }
   }
 
-  // SOFT DELETE FUNCTION ---------------------------------------------------------------------------
+  
+
   async softDelete(id: string) {
     await this.findOne(id);
     try {
@@ -373,7 +373,7 @@ export class EventsService {
     }
   }
 
-  // ARCHIVE FUNCTION ---------------------------------------------------------------------------
+  
   async archive(id: string) {
     await this.findOne(id);
     try {
