@@ -11,6 +11,7 @@ async function main() {
   await prisma.payment.deleteMany();
   await prisma.registration.deleteMany();
   await prisma.ticketCategory.deleteMany();
+  await prisma.eventAnnouncements.deleteMany();
   await prisma.event.deleteMany();
   await prisma.organizationGroup.deleteMany();
   await prisma.booker.deleteMany();
