@@ -10,6 +10,7 @@ import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { SupabaseService } from 'src/supabase/supabase.service';
+import { UsersService } from 'src/users/users.service';
 import { Prisma, UserType } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
@@ -18,7 +19,15 @@ export class OrganizationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly supabase: SupabaseService,
+    private readonly usersService: UsersService,
   ) {}
+
+  private readonly ARCHIVE_ACTIONS = {
+    ARCHIVE: 'archive',
+    UNARCHIVE: 'unarchive',
+    ARCHIVED: 'archived',
+    UNARCHIVED: 'unarchived',
+  } as const;
 
   async create(createOrganizationDto: CreateOrganizationDto) {
   const { email, password, ...organizationData } = createOrganizationDto;
@@ -31,13 +40,11 @@ export class OrganizationsService {
   }
   try {
     
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email },
-    });
+    const existingUser = await this.usersService.findByEmail(email);
 
     if (existingUser) {
       throw new HttpException(
-        'Email already exists',
+        'A user with this email already exists',
         HttpStatus.CONFLICT,
       );
     }
@@ -138,9 +145,6 @@ export class OrganizationsService {
       };
     } catch (error) {
       
-      if (error instanceof HttpException) {
-        throw error;
-      }
       throw new HttpException(
         'Error fetching organizations',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -232,18 +236,18 @@ export class OrganizationsService {
       },
     });
 
-    return organization;
-  }
-
-  async update(id: string, updateOrganizationDto: UpdateOrganizationDto) {
-    const currentOrganization = await this.findOneById(id);
-
-    if(!currentOrganization){
+    if(!organization){
       throw new HttpException(
         'Organization not found',
         HttpStatus.NOT_FOUND
       );
     }
+
+    return organization;
+  }
+
+  async update(id: string, updateOrganizationDto: UpdateOrganizationDto) {
+    await this.findOneById(id);
 
     try {
       const updatedOrganization = await this.prisma.organizationChild.update({
@@ -416,14 +420,7 @@ export class OrganizationsService {
   }
 
   private async updateArchiveStatus(id: string, isArchived: boolean) {
-  const currentOrganization = await this.findOneById(id);
-
-  if (!currentOrganization) {
-    throw new HttpException(
-      'Organization not found',
-      HttpStatus.NOT_FOUND
-    );
-  }
+    await this.findOneById(id);
 
   try {
     const updatedOrganization = await this.prisma.organizationChild.update({
@@ -431,8 +428,8 @@ export class OrganizationsService {
       data: { isArchived },
     });
 
-    const action = isArchived ? 'archived' : 'unarchived';
-    
+    const action = isArchived ? this.ARCHIVE_ACTIONS.ARCHIVED : this.ARCHIVE_ACTIONS.UNARCHIVED;
+
     return {
       message: `Organization ${action} successfully`,
       data: updatedOrganization,
@@ -440,10 +437,7 @@ export class OrganizationsService {
     };
   } catch (error) {
 
-     if (error instanceof HttpException) {
-      throw error;
-    }
-    const action = isArchived ? 'archive' : 'unarchive';
+    const action = isArchived ? this.ARCHIVE_ACTIONS.ARCHIVE : this.ARCHIVE_ACTIONS.UNARCHIVE;
     throw new HttpException(
       `Failed to ${action} organization`,
       HttpStatus.INTERNAL_SERVER_ERROR,

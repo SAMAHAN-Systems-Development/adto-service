@@ -4,6 +4,7 @@ import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { PrismaService } from '../prisma/prisma.service'; 
+import { UsersService } from '../users/users.service';
 import { SupabaseService } from '../supabase/supabase.service'; 
 import { Prisma, UserType } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
@@ -15,6 +16,7 @@ describe('OrganizationsService', () => {
   let service: OrganizationsService;
   let prismaService: PrismaService;
   let supabaseService: SupabaseService;
+  let usersService: UsersService;
 
   // Mock implementations
   const mockPrismaService = {
@@ -41,6 +43,16 @@ describe('OrganizationsService', () => {
     getFileUrl: jest.fn(),
   };
 
+  const mockUsersService = {
+    findByEmail: jest.fn(),
+    findOne: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    findAll: jest.fn(),
+    deactivate: jest.fn(),
+    getCurrentBooker: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -53,12 +65,17 @@ describe('OrganizationsService', () => {
           provide: SupabaseService,
           useValue: mockSupabaseService,
         },
+        {
+          provide: UsersService,
+          useValue: mockUsersService,
+        },
       ],
     }).compile();
 
     service = module.get<OrganizationsService>(OrganizationsService);
     prismaService = module.get<PrismaService>(PrismaService);
     supabaseService = module.get<SupabaseService>(SupabaseService);
+    usersService = module.get<UsersService>(UsersService);
 
     // Reset all mocks before each test
     jest.clearAllMocks();
@@ -98,7 +115,7 @@ describe('OrganizationsService', () => {
 
     it('should create an organization successfully with email and password', async () => {
       // Arrange
-      mockPrismaService.user.findUnique.mockResolvedValue(null); // Email doesn't exist
+      mockUsersService.findByEmail.mockResolvedValue(null); // Email doesn't exist
       
       // Mock the transaction function
       mockPrismaService.$transaction.mockImplementation(async (callback) => {
@@ -119,9 +136,8 @@ describe('OrganizationsService', () => {
       const result = await service.create(validCreateDto);
 
       // Assert
-      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
-        where: { email: validCreateDto.email },
-      });
+      expect(mockUsersService.findByEmail).toHaveBeenCalledWith(validCreateDto.email);
+
       
       expect(bcrypt.genSalt).toHaveBeenCalledWith(10);
       expect(bcrypt.hash).toHaveBeenCalledWith(validCreateDto.password, 'salt');
@@ -147,7 +163,7 @@ describe('OrganizationsService', () => {
         user: null,
       };
 
-      mockPrismaService.user.findUnique.mockResolvedValue(null);
+      mockUsersService.findByEmail.mockResolvedValue(null);
       
       mockPrismaService.$transaction.mockImplementation(async (callback) => {
         const mockPrismaTransaction = {
@@ -185,7 +201,7 @@ describe('OrganizationsService', () => {
         ),
       );
 
-      expect(mockPrismaService.user.findUnique).not.toHaveBeenCalled();
+      expect(mockUsersService.findByEmail).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequest when email is missing', async () => {
@@ -204,16 +220,16 @@ describe('OrganizationsService', () => {
         ),
       );
 
-      expect(mockPrismaService.user.findUnique).not.toHaveBeenCalled();
+      expect(mockUsersService.findByEmail).not.toHaveBeenCalled();
     });
 
     it('should throw Conflict when email already exists', async () => {
       // Arrange
-      mockPrismaService.user.findUnique.mockResolvedValue(mockUser); // Email exists
+      mockUsersService.findByEmail.mockResolvedValue(mockUser); // Email exists
 
       // Act & Assert
       await expect(service.create(validCreateDto)).rejects.toThrow(
-        new HttpException('Email already exists', HttpStatus.CONFLICT),
+        new HttpException('A user with this email already exists', HttpStatus.CONFLICT),
       );
 
       expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
@@ -221,7 +237,7 @@ describe('OrganizationsService', () => {
 
     it('should handle Prisma errors during user creation', async () => {
       // Arrange
-      mockPrismaService.user.findUnique.mockResolvedValue(null);
+      mockUsersService.findByEmail.mockResolvedValue(null);
       
       const prismaError = new Error('Database connection failed');
       mockPrismaService.$transaction.mockRejectedValue(prismaError);
@@ -925,16 +941,18 @@ describe('findOneById', () => {
     expect(result).toBe(mockOrganization);
   });
 
-  it('should return null when organization not found', async () => {
-    // Arrange
-    mockPrismaService.organizationChild.findUnique.mockResolvedValue(null);
+  it('should throw HttpException when organization not found', async () => {
+  // Arrange
+  mockPrismaService.organizationChild.findUnique.mockResolvedValue(null);
 
-    // Act
-    const result = await service.findOneById('nonexistent');
+  // Act
+  const findPromise = service.findOneById('nonexistent');
 
-    // Assert
-    expect(result).toBeNull();
-  });
+  // Assert
+  await expect(findPromise).rejects.toThrow(
+    new HttpException('Organization not found', HttpStatus.NOT_FOUND)
+  );
+});
 
   it('should include all necessary relationships', async () => {
     // Arrange
