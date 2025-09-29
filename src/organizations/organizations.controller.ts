@@ -25,13 +25,13 @@ import { AuthGuard } from 'src/auth/auth.guard';
 export class OrganizationsController {
   constructor(private readonly organizationsService: OrganizationsService) {}
 
-  @UseGuards(AuthGuard)
   @Post()
   @HttpCode(HttpStatus.CREATED)
   create(@Body() createOrganizationDto: CreateOrganizationDto) {
     return this.organizationsService.create(createOrganizationDto);
   }
 
+  
   @Get()
   findAll(
     @Query('page') page?: number,
@@ -65,7 +65,6 @@ export class OrganizationsController {
     });
   }
 
-  @UseGuards(AuthGuard)
   @Patch('/uploadIcon/:id')
   @UseInterceptors(FileInterceptor('icon'))
   uploadOrganizationIcon(
@@ -90,7 +89,6 @@ export class OrganizationsController {
     return this.organizationsService.findOneById(id);
   }
 
-  @UseGuards(AuthGuard)
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
   update(
@@ -100,14 +98,12 @@ export class OrganizationsController {
     return this.organizationsService.update(id, updateOrganizationDto);
   }
 
-  @UseGuards(AuthGuard)
   @Patch(':id/archive')
   @HttpCode(HttpStatus.OK)
   archiveOrganizationChild(@Param('id') id: string) {
     return this.organizationsService.archiveOrganizationChild(id);
   }
 
-  @UseGuards(AuthGuard)
   @Patch(':id/unarchive')
   @HttpCode(HttpStatus.OK)
   unarchiveOrganizationChild(@Param('id') id: string) {
