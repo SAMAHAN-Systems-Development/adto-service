@@ -11,21 +11,27 @@ import {
   MaxFileSizeValidator,
   FileTypeValidator,
   Query,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { AuthGuard } from 'src/auth/auth.guard'; 
 
 @Controller('organizations')
 export class OrganizationsController {
   constructor(private readonly organizationsService: OrganizationsService) {}
 
   @Post()
+  @HttpCode(HttpStatus.CREATED)
   create(@Body() createOrganizationDto: CreateOrganizationDto) {
     return this.organizationsService.create(createOrganizationDto);
   }
 
+  
   @Get()
   findAll(
     @Query('page') page?: number,
@@ -41,6 +47,7 @@ export class OrganizationsController {
     });
   }
 
+  
   @Get('/all')
   findAllOrganizationsWithoutFilters() {
     return this.organizationsService.findAllOrganizationsWithoutFilters();
@@ -83,6 +90,7 @@ export class OrganizationsController {
   }
 
   @Patch(':id')
+  @HttpCode(HttpStatus.OK)
   update(
     @Param('id') id: string,
     @Body() updateOrganizationDto: UpdateOrganizationDto,
@@ -91,7 +99,14 @@ export class OrganizationsController {
   }
 
   @Patch(':id/archive')
+  @HttpCode(HttpStatus.OK)
   archiveOrganizationChild(@Param('id') id: string) {
     return this.organizationsService.archiveOrganizationChild(id);
+  }
+
+  @Patch(':id/unarchive')
+  @HttpCode(HttpStatus.OK)
+  unarchiveOrganizationChild(@Param('id') id: string) {
+    return this.organizationsService.unarchiveOrganizationChild(id);
   }
 }

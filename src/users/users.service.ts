@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -84,6 +84,29 @@ export class UsersService {
         organization: true,
       },
     });
+
+    return user;
+  }
+
+  async findByEmail(email: string) {
+    const user = await this.prismaService.user.findUnique({
+      where: { email },
+      include: {
+        booker: {
+          include: {
+            registrations: true,
+            course: true,
+          },
+        },
+        organization: true,
+      },
+    });
+    if (!user) {
+      throw new HttpException(
+        'Email does not exist',
+        HttpStatus.NOT_FOUND,
+      );
+    }
 
     return user;
   }
