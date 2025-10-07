@@ -236,42 +236,9 @@ export class EventsService {
         data: updatedEvent,
       };
     } catch (error) {
-      // Handle specific Prisma errors
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new NotFoundException('Event not found', {
-            cause: error,
-            description: 'The event with the provided ID does not exist',
-          });
-        }
-        if (error.code === 'P2002') {
-          throw new HttpException(
-            'Event update failed due to constraint violation',
-            HttpStatus.CONFLICT,
-          );
-        }
-      }
-
-      // Handle validation errors
-      if (error instanceof Prisma.PrismaClientValidationError) {
-        throw new HttpException(
-          'Invalid data provided for event update',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      // Re-throw HTTP exceptions from findOne
-      if (error instanceof HttpException) {
-        throw error;
-      }
-
-      // Generic error for unexpected cases
-      throw new InternalServerErrorException(
-        'An unexpected error occurred while updating the event',
-        {
-          cause: error,
-          description: 'Please try again or contact support if the issue persists',
-        },
+      throw new HttpException(
+        'Event could not be updated',
+        HttpStatus.BAD_REQUEST,
       );
     }
   }
@@ -294,35 +261,9 @@ export class EventsService {
         data: publishedEvent,
       };
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new NotFoundException('Event not found', {
-            cause: error,
-            description: 'The event with the provided ID does not exist',
-          });
-        }
-        if (error.code === 'P2002') {
-          throw new HttpException(
-            'Event publish failed due to constraint violation',
-            HttpStatus.CONFLICT,
-          );
-        }
-      }
-      if (error instanceof Prisma.PrismaClientValidationError) {
-        throw new HttpException(
-          'Invalid data provided for event publish',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
+      throw new HttpException(
         'Event could not be published',
-        {
-          cause: error,
-          description: 'An unexpected error occurred',
-        },
+        HttpStatus.BAD_REQUEST,
       );
     }
   }
@@ -346,29 +287,9 @@ export class EventsService {
         data: deletedEvent,
       };
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new NotFoundException('Event not found', {
-            cause: error,
-            description: 'The event with the provided ID does not exist',
-          });
-        }
-      }
-      if (error instanceof Prisma.PrismaClientValidationError) {
-        throw new HttpException(
-          'Invalid data provided for event deletion',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
+      throw new HttpException(
         'Event could not be deleted',
-        {
-          cause: error,
-          description: 'An unexpected error occurred',
-        },
+        HttpStatus.BAD_REQUEST,
       );
     }
   }
@@ -394,7 +315,6 @@ export class EventsService {
           description: 'Id does not exist',
         });
       }
-
       throw new InternalServerErrorException('Event could not be archived', {
         cause: error,
         description: 'An unexpected error occurred',
