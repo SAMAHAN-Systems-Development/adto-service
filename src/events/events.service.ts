@@ -12,7 +12,12 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class EventsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService
+  ) {}
+
+  
+
   async create(createEventDto: CreateEventDto, orgId: string) {
     const createdEvent = await this.prisma.event.create({
       data: {
@@ -39,6 +44,7 @@ export class EventsService {
       data: createdEvent,
     };
   }
+
 
   async findAll(query: {
     page?: number;
@@ -115,6 +121,7 @@ export class EventsService {
       },
     };
   }
+
 
   async findAllByOrganizationChild(
     orgId: string,
@@ -205,13 +212,23 @@ export class EventsService {
   }
 
   async update(id: string, updateEventDto: UpdateEventDto) {
+    
     await this.findOne(id);
+    
     try {
       const updatedEvent = await this.prisma.event.update({
         where: {
           id,
         },
-        data: updateEventDto,
+        data: {
+          ...updateEventDto,
+          // Convert date strings to Date objects if they exist
+          ...(updateEventDto.dateStart && { dateStart: new Date(updateEventDto.dateStart) }),
+          ...(updateEventDto.dateEnd && { dateEnd: new Date(updateEventDto.dateEnd) }),
+        },
+        include: {
+          org: true,
+        },
       });
 
       return {
@@ -225,6 +242,7 @@ export class EventsService {
       );
     }
   }
+
 
   async publishEvent(id: string) {
     await this.findOne(id);
@@ -250,6 +268,8 @@ export class EventsService {
     }
   }
 
+  
+
   async softDelete(id: string) {
     await this.findOne(id);
     try {
@@ -274,7 +294,9 @@ export class EventsService {
     }
   }
 
+  
   async archive(id: string) {
+    await this.findOne(id);
     try {
       return {
         message: 'Event archived successfully',
@@ -293,7 +315,6 @@ export class EventsService {
           description: 'Id does not exist',
         });
       }
-
       throw new InternalServerErrorException('Event could not be archived', {
         cause: error,
         description: 'An unexpected error occurred',

@@ -11,6 +11,7 @@ async function main() {
   await prisma.payment.deleteMany();
   await prisma.registration.deleteMany();
   await prisma.ticketCategory.deleteMany();
+  await prisma.eventAnnouncements.deleteMany();
   await prisma.event.deleteMany();
   await prisma.organizationGroup.deleteMany();
   await prisma.booker.deleteMany();
@@ -368,6 +369,22 @@ async function main() {
     data: orgChildrenData,
   });
   console.log(`Created ${orgChildrenData.length} organization children.`);
+
+  // --- Update Organization Users with organizationId ---
+  console.log('Updating organization users with organizationId...');
+
+  // Update users to connect them to their organizations
+  await prisma.user.update({
+    where: { id: 'user_org_a' },
+    data: { organizationId: 'org_a' }
+  });
+
+  await prisma.user.update({
+    where: { id: 'user_org_b' },
+    data: { organizationId: 'org_b' }
+  });
+
+  console.log('Updated organization users with organizationId.');
 
   // --- Seed Organization Groups (Link Parents and Children) ---
   const orgGroupsData = [
