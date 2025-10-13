@@ -137,11 +137,16 @@ export class OrganizationsService {
         );
       }
 
+      const totalCount = await this.prisma.organizationChild.count({ where });
+
       return {
-        message: 'Organizations fetched successfully',
         data: organizations,
-        page,
-        limit,
+        meta: {
+          totalCount,
+          totalPages: Math.ceil(totalCount / limit),
+          currentPage: page,
+          limit,
+        },
       };
     } catch (error) {
       
@@ -190,13 +195,15 @@ export class OrganizationsService {
     const skip = (page - 1) * limit;
 
     try {
-      const organizations = await this.prisma.organizationGroup.findMany({
-        where: {
-          organizationParentId,
-          organizationChild: {
-            isArchived: false,
-          },
+      const where = {
+        organizationParentId,
+        organizationChild: {
+          isArchived: false,
         },
+      };
+
+      const organizations = await this.prisma.organizationGroup.findMany({
+        where,
         skip,
         take: limit,
         include: {
@@ -206,7 +213,17 @@ export class OrganizationsService {
         },
       });
 
-      return organizations;
+      const totalCount = await this.prisma.organizationGroup.count({ where });
+
+      return {
+        data: organizations,
+        meta: {
+          totalCount,
+          totalPages: Math.ceil(totalCount / limit),
+          currentPage: page,
+          limit,
+        },
+      };
     } catch (error) {
       
       if (error instanceof HttpException) {
