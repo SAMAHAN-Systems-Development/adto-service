@@ -9,8 +9,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DB_URL")
+  provider = "postgresql"
+  url      = env("DB_URL")
   // directUrl = env("DIRECT_URL")
 }
 
@@ -103,21 +103,21 @@ model Payment {
 }
 
 model Registration {
-  id               String         @id @default(cuid())
+  id               String      @id @default(cuid())
   bookerId         String
   eventId          String
   confirmedAt      DateTime?
-  isAttended       Boolean        @default(false)
+  isAttended       Boolean     @default(false)
   ticketCategoryId String
-  ticketCategory   TicketCategory @relation(fields: [ticketCategoryId], references: [id])
-  booker           Booker         @relation(fields: [bookerId], references: [id])
-  event            Event          @relation(fields: [eventId], references: [id])
+  ticketCategory   EventTicket @relation(fields: [ticketCategoryId], references: [id])
+  booker           Booker      @relation(fields: [bookerId], references: [id])
+  event            Event       @relation(fields: [eventId], references: [id])
   payment          Payment?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 }
 
-model TicketCategory {
+model EventTicket {
   id                   String         @id @default(cuid())
   name                 String
   description          String
@@ -145,7 +145,7 @@ model Event {
   orgId                  String
   org                    OrganizationChild    @relation(fields: [orgId], references: [id])
   registrations          Registration[]
-  ticketCategories       TicketCategory[]
+  eventTickets           EventTicket[]
   eventAnnouncements     EventAnnouncements[]
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
