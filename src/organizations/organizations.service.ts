@@ -40,14 +40,7 @@ export class OrganizationsService {
   }
   try {
     
-    const existingUser = await this.usersService.findByEmail(email);
 
-    if (existingUser) {
-      throw new HttpException(
-        'A user with this email already exists',
-        HttpStatus.CONFLICT,
-      );
-    }
 
     return await this.prisma.$transaction(async (prisma) => {
       let userId = null;
