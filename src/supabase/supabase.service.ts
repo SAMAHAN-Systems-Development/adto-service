@@ -6,9 +6,9 @@ import 'dotenv/config';
 export class SupabaseService {
   private supabase: SupabaseClient;
   constructor() {
-    const supabaseURL = process.env.API_URL!;
-    const supabaseAPIKey = process.env.ANON_KEY!;
-    this.supabase = createClient(supabaseURL, supabaseAPIKey);
+    const SUPABASE_URL = process.env.API_URL!;
+    const SUPABASE_ANON_KEY = process.env.ANON_KEY!;
+    this.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
 
   getSupabase() {
