@@ -6,6 +6,8 @@ import {
   Patch,
   Param,
   Delete,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { EventAnnouncementsService } from './event-announcements.service';
 import { CreateEventAnnouncementDto } from './dto/create-event-announcement.dto';
@@ -18,6 +20,8 @@ export class EventAnnouncementsController {
   ) {}
 
   @Post()
+  @HttpCode(HttpStatus.CREATED)
+
   create(@Body() createEventAnnouncementDto: CreateEventAnnouncementDto) {
     return this.eventAnnouncementsService.create(createEventAnnouncementDto);
   }
@@ -38,6 +42,7 @@ export class EventAnnouncementsController {
   }
 
   @Patch(':id')
+  @HttpCode(HttpStatus.OK)
   update(
     @Param('id') id: string,
     @Body() updateEventAnnouncementDto: UpdateEventAnnouncementDto,
@@ -48,7 +53,8 @@ export class EventAnnouncementsController {
     );
   }
 
-  @Delete(':id')
+  @Delete('delete/:id')
+  @HttpCode(HttpStatus.OK)
   remove(@Param('id') id: string) {
     return this.eventAnnouncementsService.remove(id);
   }

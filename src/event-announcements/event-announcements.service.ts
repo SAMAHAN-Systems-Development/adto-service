@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { CreateEventAnnouncementDto } from './dto/create-event-announcement.dto';
 import { UpdateEventAnnouncementDto } from './dto/update-event-announcement.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -12,29 +12,65 @@ export class EventAnnouncementsService {
   ) {}
   async create(createEventAnnouncementDto: CreateEventAnnouncementDto) {
     const { eventId, ...announcementDetails } = createEventAnnouncementDto;
+
     if (!eventId) {
-      throw new Error('Event ID is required to create an announcement');
+      throw new HttpException(
+        'Event ID is required',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
-    const event = await this.eventService.findOne(eventId);
+    try {
+      const event = await this.eventsService.findOne(eventId)
 
-    if (!event) {
-      throw new Error(`Event with id ${eventId} not found`);
-    }
+      if (!event) {
+        throw new HttpException(
+          `Event with id ${eventId} not found`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
 
-    const eventAnnouncement = await this.prisma.eventAnnouncements.create({
-      data: {
-        ...announcementDetails,
-        event: {
-          connect: { id: eventId },
+      if (user.role === UserType.ORGANIZATION && event.orgId !== user.orgId) {
+        throw new HttpException(
+          `You can only create announcements for your organization events`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const eventAnnouncement = await this.prisma.eventAnnouncements.create({
+        data: {
+          ...announcementDetails,
+          event: {
+            connect: { id: eventId },
+          },
         },
-      },
-    });
+        include: {
+          event: {
+            include: {
+              org: true,
+            },
+          },
+        },
+      });
 
-    if (!eventAnnouncement) {
-      throw new Error('Failed to create event announcement');
+
+      return {
+        message: 'Event announcement created successfully',
+        data: eventAnnouncement,
+        statusCode: HttpStatus.CREATED,
+      };
+
+    } catch (error) {
+      if (error instanceof HttpException) {
+            throw error;
+      }
+
+      throw new HttpException(
+        `Failed to create event announcement`,
+        HttpStatus.BAD_REQUEST,
+      );
     }
-
+    
     return eventAnnouncement;
   }
 
