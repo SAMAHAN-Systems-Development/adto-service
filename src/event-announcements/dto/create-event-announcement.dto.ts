@@ -12,9 +12,13 @@ export class CreateEventAnnouncementDto {
 
   @IsNotEmpty()
   @IsString()
+  @MinLength(1)
+  @MaxLength(200)
   title: string;
 
   @IsNotEmpty()
   @IsString()
+  @MinLength(1)
+  @MaxLength(1000)
   content: string;
 }
