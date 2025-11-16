@@ -3,6 +3,8 @@ import { CreateEventAnnouncementDto } from './dto/create-event-announcement.dto'
 import { UpdateEventAnnouncementDto } from './dto/update-event-announcement.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { EventsService } from 'src/events/events.service';
+import { Prisma, UserType } from '@prisma/client';
+
 
 @Injectable()
 export class EventAnnouncementsService {
@@ -10,7 +12,7 @@ export class EventAnnouncementsService {
     private readonly prisma: PrismaService,
     private eventService: EventsService,
   ) {}
-  async create(createEventAnnouncementDto: CreateEventAnnouncementDto) {
+  async create(createEventAnnouncementDto: CreateEventAnnouncementDto, user: any) {
     const { eventId, ...announcementDetails } = createEventAnnouncementDto;
 
     if (!eventId) {
@@ -21,7 +23,7 @@ export class EventAnnouncementsService {
     }
 
     try {
-      const event = await this.eventsService.findOne(eventId)
+      const event = await this.eventService.findOne(eventId)
 
       if (!event) {
         throw new HttpException(
@@ -70,69 +72,227 @@ export class EventAnnouncementsService {
         HttpStatus.BAD_REQUEST,
       );
     }
-    
-    return eventAnnouncement;
+
   }
 
-  async findAllByEvent(eventId: string) {
-    const eventAnnouncements = await this.prisma.eventAnnouncements.findMany({
-      where: { eventId },
-    });
+  async findAllByEvent(eventId: string, user: any) {
+    try {
+      const event = await this.eventService.findOne(eventId);
 
-    if (!eventAnnouncements) {
-      throw new Error('No event announcements found for this event');
+      if (!event) {
+        throw new HttpException(
+          `Event with id ${eventId} not found`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (user.role === UserType.ORGANIZATION && event.orgId !== user.orgId) {
+        throw new HttpException(
+          `You can only create announcements for your organization events`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const announcements = await this.prisma.eventAnnouncements.findMany({
+        where: { eventId },
+        include: {
+          event: {
+            include: {
+              org: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      return {
+        message: 'Event announcements fetched successfully',
+        data: announcements,
+        statusCode: HttpStatus.OK,
+      };
+
+    }catch (error){
+      if (error instanceof HttpException) {
+          throw error;
+      }
+
+      throw new HttpException(
+        `Failed to fetch event announcements`,
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
-    return eventAnnouncements;
   }
 
-  async findAll() {
-    const eventAnnouncements = this.prisma.eventAnnouncements.findMany();
+  async findAll(filters: {
+    eventId?: string;
+    organizationId?: string;
+    user: any;
+  }) {
+    const { eventId, organizationId, user } = filters;
 
-    if (!eventAnnouncements) {
-      throw new Error('No event announcements found');
+    try {
+      const where: any = {};
+
+      // Add filters
+      if (eventId) {
+        where.eventId = eventId;
+      }
+
+      if (organizationId) {
+        where.event = {
+          orgId: organizationId,
+        };
+      }
+
+      // Role-based filtering
+      if (user.role === UserType.ORGANIZATION) {
+        where.event = {
+          ...where.event,
+          orgId: user.orgId,
+        };
+      }
+
+      const announcements = await this.prisma.eventAnnouncements.findMany({
+        where,
+        include: {
+          event: {
+            include: {
+              org: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      return {
+        message: 'Event announcements fetched successfully',
+        data: announcements,
+        statusCode: HttpStatus.OK,
+      };
+
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        `Failed to fetch event announcements`,
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
-    return eventAnnouncements;
   }
 
-  async findOne(id: string) {
-    const eventAnnouncement = this.prisma.eventAnnouncements.findUnique({
-      where: { id },
-    });
+  async findOne(id: string, user: any) {
+    try {
+      const announcement = await this.prisma.eventAnnouncements.findUnique({
+        where: { id },
+        include: {
+          event: {
+            include: {
+              org: true,
+            },
+          },
+        },
+      });
 
-    if (!eventAnnouncement) {
-      throw new Error(`Event announcement with id ${id} not found`);
+      if (!announcement) {
+        throw new HttpException(
+          `Event announcement with id ${id} not found`, 
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // Check access rights
+      if (user.role === UserType.ORGANIZATION && announcement.event.orgId !== user.orgId) {
+        throw new HttpException(
+          'You can only view announcements for your organization events',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+
+      return {
+        message: 'Event announcement fetched successfully',
+        data: announcement,
+        statusCode: HttpStatus.OK,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        `Failed to fetch event announcement`,
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
-    return eventAnnouncement;
   }
 
   async update(
     id: string,
     updateEventAnnouncementDto: UpdateEventAnnouncementDto,
+    user: any,
   ) {
-    const updatedEventAnnouncement = this.prisma.eventAnnouncements.update({
-      where: { id },
-      data: updateEventAnnouncementDto,
-    });
+    try {
+      //Check if announcement exists and user has access
+      const existingAnnouncement = await this.findOne(id, user);
 
-    if (!updatedEventAnnouncement) {
-      throw new Error(`Failed to update event announcement with id ${id}`);
-    }
+      const updatedAnnouncement = await this.prisma.eventAnnouncements.update({
+        where: { id },
+        data: updateEventAnnouncementDto,
+        include: {
+          event: {
+            include: {
+              org: true,
+            },
+          },
+        },
+      });
 
-    return updatedEventAnnouncement;
+      return {
+        message: 'Event announcement updated successfully',
+        data: updatedAnnouncement,
+        statusCode: HttpStatus.OK,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+          }
+      throw new HttpException(
+          `Failed to fetch event announcement`,
+           HttpStatus.BAD_REQUEST,
+          );
+      }
   }
 
-  async remove(id: string) {
-    const deletedEventAnnouncement = this.prisma.eventAnnouncements.delete({
-      where: { id },
-    });
 
-    if (!deletedEventAnnouncement) {
-      throw new Error(`Failed to delete event announcement with id ${id}`);
+  async remove(id: string, user: any) {
+    try {
+      // Check if announcement exists and user has access
+      await this.findOne(id, user);
+
+      await this.prisma.eventAnnouncements.delete({
+        where: { id },
+      });
+
+      return {
+        message: 'Event announcement deleted successfully',
+        statusCode: HttpStatus.OK,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Failed to delete event announcement',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
-
-    return deletedEventAnnouncement;
   }
 }
