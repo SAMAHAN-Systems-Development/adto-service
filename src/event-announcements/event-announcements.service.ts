@@ -32,6 +32,14 @@ export class EventAnnouncementsService {
         );
       }
 
+      // Superadmins (UserType.ADMIN) have read-only access
+      if (user.role === UserType.ADMIN) {
+        throw new HttpException(
+          'Superadmins have read-only access to announcements',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+
       if (user.role === UserType.ORGANIZATION && event.orgId !== user.orgId) {
         throw new HttpException(
           `You can only create announcements for your organization events`,
@@ -88,8 +96,8 @@ export class EventAnnouncementsService {
 
       if (user.role === UserType.ORGANIZATION && event.orgId !== user.orgId) {
         throw new HttpException(
-          `You can only create announcements for your organization events`,
-          HttpStatus.BAD_REQUEST,
+          `You can only view announcements for your organization events`,
+          HttpStatus.FORBIDDEN,
         );
       }
 
@@ -240,6 +248,14 @@ export class EventAnnouncementsService {
     user: any,
   ) {
     try {
+        // Superadmins have read-only access
+      if (user.role === UserType.ADMIN) {
+        throw new HttpException(
+          'Superadmins have read-only access to announcements',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+
       //Check if announcement exists and user has access
       const existingAnnouncement = await this.findOne(id, user);
 
@@ -274,6 +290,15 @@ export class EventAnnouncementsService {
 
   async remove(id: string, user: any) {
     try {
+
+        // Superadmins have read-only access
+      if (user.role === UserType.ADMIN) {
+        throw new HttpException(
+          'Superadmins have read-only access to announcements',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+      
       // Check if announcement exists and user has access
       await this.findOne(id, user);
 
