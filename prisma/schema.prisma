@@ -1,29 +1,10 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL") //adjust to DB_URL again
-  // directUrl = env("DIRECT_URL")
-}
-
-enum UserType {
-  ADMIN
-  ORGANIZATION
-  USER
-}
-
-enum AnnouncementType {
-  INFO
-  WARNING
-  CANCELLED
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model OrganizationParent {
@@ -35,9 +16,9 @@ model OrganizationParent {
 
 model OrganizationGroup {
   organizationParentId String
-  organizationParent   OrganizationParent @relation(fields: [organizationParentId], references: [id])
   organizationChildId  String
   organizationChild    OrganizationChild  @relation(fields: [organizationChildId], references: [id])
+  organizationParent   OrganizationParent @relation(fields: [organizationParentId], references: [id])
 
   @@id([organizationParentId, organizationChildId])
 }
@@ -53,10 +34,10 @@ model OrganizationChild {
   twitter             String?
   linkedin            String?
   isAdmin             Boolean             @default(false)
-  isArchived          Boolean             @default(false)
   userId              String?             @unique
-  user                User?               @relation(fields: [userId], references: [id])
+  isArchived          Boolean             @default(false)
   events              Event[]
+  user                User?               @relation(fields: [userId], references: [id])
   organizationParents OrganizationGroup[]
 }
 
@@ -70,14 +51,14 @@ model User {
   id             String             @id @default(cuid())
   email          String             @unique
   password       String
-  booker         Booker?
   bookerId       String?
-  organization   OrganizationChild?
   organizationId String?
   userType       UserType
   isActive       Boolean            @default(true)
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
+  booker         Booker?
+  organization   OrganizationChild?
 }
 
 model Booker {
@@ -85,10 +66,10 @@ model Booker {
   contactNumber String
   validId       String?
   courseId      String
-  course        Course         @relation(fields: [courseId], references: [id])
-  isAlumni      Boolean // If Alumni => render Batch Field else render YTG field (save in batch field)
-  batch         Int? // create util func for current students ((YTG) => YTG - CurrentDate())
+  isAlumni      Boolean
+  batch         Int?
   userId        String?        @unique
+  course        Course         @relation(fields: [courseId], references: [id])
   user          User?          @relation(fields: [userId], references: [id])
   registrations Registration[]
 }
@@ -109,12 +90,12 @@ model Registration {
   confirmedAt      DateTime?
   isAttended       Boolean        @default(false)
   ticketCategoryId String
-  ticketCategory   TicketCategory @relation(fields: [ticketCategoryId], references: [id])
-  booker           Booker         @relation(fields: [bookerId], references: [id])
-  event            Event          @relation(fields: [eventId], references: [id])
-  payment          Payment?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
+  payment          Payment?
+  booker           Booker         @relation(fields: [bookerId], references: [id])
+  event            Event          @relation(fields: [eventId], references: [id])
+  ticketCategory   TicketCategory @relation(fields: [ticketCategoryId], references: [id])
 }
 
 model TicketCategory {
@@ -125,10 +106,10 @@ model TicketCategory {
   capacity             Int
   registrationDeadline DateTime
   eventId              String
-  event                Event          @relation(fields: [eventId], references: [id])
-  registrations        Registration[]
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
+  registrations        Registration[]
+  event                Event          @relation(fields: [eventId], references: [id])
 }
 
 model Event {
@@ -137,28 +118,40 @@ model Event {
   description            String
   dateStart              DateTime
   dateEnd                DateTime
-  isRegistrationOpen     Boolean              @default(false) // Registration can be published but not open
-  isRegistrationRequired Boolean              @default(true) // Some registrations are open to public without registration
-  isOpenToOutsiders      Boolean              @default(false) // Event is open to outsiders
-  isPublished            Boolean              @default(false) // Event can be created but not published
-  isArchived             Boolean              @default(false) // Event is archived
+  isRegistrationOpen     Boolean              @default(false)
+  isRegistrationRequired Boolean              @default(true)
+  isOpenToOutsiders      Boolean              @default(false)
   orgId                  String
-  org                    OrganizationChild    @relation(fields: [orgId], references: [id])
-  registrations          Registration[]
-  ticketCategories       TicketCategory[]
-  eventAnnouncements     EventAnnouncements[]
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
   deletedAt              DateTime?
+  isPublished            Boolean              @default(false)
+  isArchived             Boolean              @default(false)
+  org                    OrganizationChild    @relation(fields: [orgId], references: [id])
+  eventAnnouncements     EventAnnouncements[]
+  registrations          Registration[]
+  ticketCategories       TicketCategory[]
 }
 
 model EventAnnouncements {
   id               String           @id @default(cuid())
   eventId          String
-  event            Event            @relation(fields: [eventId], references: [id])
   announcementType AnnouncementType
   title            String
   content          String
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
+  event            Event            @relation(fields: [eventId], references: [id])
+}
+
+enum UserType {
+  ADMIN
+  ORGANIZATION
+  USER
+}
+
+enum AnnouncementType {
+  INFO
+  WARNING
+  CANCELLED
 }

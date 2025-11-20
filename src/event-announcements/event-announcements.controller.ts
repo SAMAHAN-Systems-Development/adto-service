@@ -10,6 +10,7 @@ import {
   HttpStatus,
   UseGuards,
   Request,
+  Query,
 } from '@nestjs/common';
 import { EventAnnouncementsService } from './event-announcements.service';
 import { CreateEventAnnouncementDto } from './dto/create-event-announcement.dto';
@@ -29,14 +30,22 @@ export class EventAnnouncementsController {
     return this.eventAnnouncementsService.create(createEventAnnouncementDto, req.user);
   }
 
-  @Get('/event/:eventId')
-  findAllByEvent(@Param('eventId') eventId: string, @Request() req) {
-    return this.eventAnnouncementsService.findAllByEvent(eventId, req.user);
-  }
+  // @Get('/event/:eventId')
+  // findAllByEvent(@Param('eventId') eventId: string, @Request() req) {
+  //   return this.eventAnnouncementsService.findAllByEvent(eventId, req.user);
+  // }
 
   @Get()
-  findAll(@Request() req) {
-    return this.eventAnnouncementsService.findAll({ user: req.user });
+  findAll(
+    @Query('eventId') eventId?: string,
+    @Query('organizationId') organizationId?: string,
+    @Request() req?
+  ) {
+    return this.eventAnnouncementsService.findAll({
+      eventId,
+      organizationId,
+      user: req.user,
+    });
   }
 
   @Get(':id')

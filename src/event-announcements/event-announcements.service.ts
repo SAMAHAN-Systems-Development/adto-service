@@ -15,6 +15,14 @@ export class EventAnnouncementsService {
   async create(createEventAnnouncementDto: CreateEventAnnouncementDto, user: any) {
     const { eventId, ...announcementDetails } = createEventAnnouncementDto;
 
+      console.log('User info:', {
+      role: user.role,
+      orgId: user.orgId,
+      email: user.email
+    });
+
+
+
     if (!eventId) {
       throw new HttpException(
         'Event ID is required',
@@ -24,6 +32,12 @@ export class EventAnnouncementsService {
 
     try {
       const event = await this.eventService.findOne(eventId)
+
+        console.log('Event info:', {
+        id: event.id,
+        name: event.name,
+        orgId: event.orgId
+      });
 
       if (!event) {
         throw new HttpException(
@@ -298,7 +312,7 @@ export class EventAnnouncementsService {
           HttpStatus.FORBIDDEN,
         );
       }
-      
+
       // Check if announcement exists and user has access
       await this.findOne(id, user);
 
