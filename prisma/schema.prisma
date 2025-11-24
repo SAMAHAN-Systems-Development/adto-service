@@ -4,9 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-<<<<<<< HEAD
-  url      = env("DATABASE_URL")
-=======
   url      = env("DB_URL")
   // directUrl = env("DIRECT_URL")
 }
@@ -21,7 +18,6 @@ enum AnnouncementType {
   INFO
   WARNING
   CANCELLED
->>>>>>> d16bd76c606fd2ed83dec7637b23b1b218652e4d
 }
 
 model OrganizationParent {
@@ -107,21 +103,12 @@ model Registration {
   confirmedAt      DateTime?
   isAttended       Boolean     @default(false)
   ticketCategoryId String
-<<<<<<< HEAD
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  payment          Payment?
-  booker           Booker         @relation(fields: [bookerId], references: [id])
-  event            Event          @relation(fields: [eventId], references: [id])
-  ticketCategory   TicketCategory @relation(fields: [ticketCategoryId], references: [id])
-=======
   ticketCategory   EventTicket @relation(fields: [ticketCategoryId], references: [id])
   booker           Booker      @relation(fields: [bookerId], references: [id])
   event            Event       @relation(fields: [eventId], references: [id])
   payment          Payment?
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
->>>>>>> d16bd76c606fd2ed83dec7637b23b1b218652e4d
 }
 
 model EventTicket {
@@ -144,47 +131,29 @@ model Event {
   description            String
   dateStart              DateTime
   dateEnd                DateTime
-  isRegistrationOpen     Boolean              @default(false)
-  isRegistrationRequired Boolean              @default(true)
-  isOpenToOutsiders      Boolean              @default(false)
+  isRegistrationOpen     Boolean              @default(false) // Registration can be published but not open
+  isRegistrationRequired Boolean              @default(true) // Some registrations are open to public without registration
+  isOpenToOutsiders      Boolean              @default(false) // Event is open to outsiders
+  isPublished            Boolean              @default(false) // Event can be created but not published
+  isArchived             Boolean              @default(false) // Event is archived
   orgId                  String
-<<<<<<< HEAD
-=======
   org                    OrganizationChild    @relation(fields: [orgId], references: [id])
   registrations          Registration[]
   eventTickets           EventTicket[]
   eventAnnouncements     EventAnnouncements[]
->>>>>>> d16bd76c606fd2ed83dec7637b23b1b218652e4d
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
   deletedAt              DateTime?
-  isPublished            Boolean              @default(false)
-  isArchived             Boolean              @default(false)
-  org                    OrganizationChild    @relation(fields: [orgId], references: [id])
-  eventAnnouncements     EventAnnouncements[]
-  registrations          Registration[]
-  ticketCategories       TicketCategory[]
 }
 
 model EventAnnouncements {
   id               String           @id @default(cuid())
   eventId          String
+  event            Event            @relation(fields: [eventId], references: [id])
   announcementType AnnouncementType
   title            String
   content          String
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
-  event            Event            @relation(fields: [eventId], references: [id])
 }
 
-enum UserType {
-  ADMIN
-  ORGANIZATION
-  USER
-}
-
-enum AnnouncementType {
-  INFO
-  WARNING
-  CANCELLED
-}
