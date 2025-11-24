@@ -4,7 +4,24 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+<<<<<<< HEAD
   url      = env("DATABASE_URL")
+=======
+  url      = env("DB_URL")
+  // directUrl = env("DIRECT_URL")
+}
+
+enum UserType {
+  ADMIN
+  ORGANIZATION
+  USER
+}
+
+enum AnnouncementType {
+  INFO
+  WARNING
+  CANCELLED
+>>>>>>> d16bd76c606fd2ed83dec7637b23b1b218652e4d
 }
 
 model OrganizationParent {
@@ -84,21 +101,30 @@ model Payment {
 }
 
 model Registration {
-  id               String         @id @default(cuid())
+  id               String      @id @default(cuid())
   bookerId         String
   eventId          String
   confirmedAt      DateTime?
-  isAttended       Boolean        @default(false)
+  isAttended       Boolean     @default(false)
   ticketCategoryId String
+<<<<<<< HEAD
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   payment          Payment?
   booker           Booker         @relation(fields: [bookerId], references: [id])
   event            Event          @relation(fields: [eventId], references: [id])
   ticketCategory   TicketCategory @relation(fields: [ticketCategoryId], references: [id])
+=======
+  ticketCategory   EventTicket @relation(fields: [ticketCategoryId], references: [id])
+  booker           Booker      @relation(fields: [bookerId], references: [id])
+  event            Event       @relation(fields: [eventId], references: [id])
+  payment          Payment?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+>>>>>>> d16bd76c606fd2ed83dec7637b23b1b218652e4d
 }
 
-model TicketCategory {
+model EventTicket {
   id                   String         @id @default(cuid())
   name                 String
   description          String
@@ -122,6 +148,13 @@ model Event {
   isRegistrationRequired Boolean              @default(true)
   isOpenToOutsiders      Boolean              @default(false)
   orgId                  String
+<<<<<<< HEAD
+=======
+  org                    OrganizationChild    @relation(fields: [orgId], references: [id])
+  registrations          Registration[]
+  eventTickets           EventTicket[]
+  eventAnnouncements     EventAnnouncements[]
+>>>>>>> d16bd76c606fd2ed83dec7637b23b1b218652e4d
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
   deletedAt              DateTime?

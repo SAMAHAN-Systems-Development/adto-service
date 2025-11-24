@@ -10,6 +10,7 @@ import {
 import { OrganizationParentsService } from './organization-parents.service';
 import { CreateOrganizationParentDto } from './dto/create-organization-parent.dto';
 import { UpdateOrganizationParentDto } from './dto/update-organization-parent.dto';
+import { Public } from 'src/auth/public.decorator';
 
 @Controller('organization-parents')
 export class OrganizationParentsController {
@@ -22,6 +23,7 @@ export class OrganizationParentsController {
     return this.organizationParentsService.create(createOrganizationParentDto);
   }
 
+  @Public()
   @Get()
   findAll() {
     return this.organizationParentsService.findAll();

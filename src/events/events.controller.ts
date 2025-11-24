@@ -13,6 +13,7 @@ import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { Public } from 'src/auth/public.decorator';
 
 @Controller('events')
 export class EventsController {
@@ -24,6 +25,7 @@ export class EventsController {
     return this.eventsService.create(createEventDto, req.user.orgId);
   }
 
+  @Public()
   @Get('/published')
   async findAllPublished(
     @Query('page') page?: number,
@@ -86,6 +88,7 @@ export class EventsController {
     return this.eventsService.archive(id);
   }
 
+  @Public()
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.eventsService.findOne(id);
