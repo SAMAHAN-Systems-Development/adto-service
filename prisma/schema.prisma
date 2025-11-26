@@ -109,7 +109,7 @@ model Registration {
   confirmedAt      DateTime?
   isAttended       Boolean     @default(false)
   ticketCategoryId String
-  ticketCategory   EventTicket @relation(fields: [ticketCategoryId], references: [id])
+  ticketCategory   TicketCategory @relation(fields: [ticketCategoryId], references: [id])
   booker           Booker      @relation(fields: [bookerId], references: [id])
   event            Event       @relation(fields: [eventId], references: [id])
   payment          Payment?
@@ -117,7 +117,7 @@ model Registration {
   updatedAt        DateTime    @updatedAt
 }
 
-model EventTicket {
+model TicketCategory {
   id                   String         @id @default(cuid())
   name                 String
   description          String
@@ -145,7 +145,7 @@ model Event {
   orgId                  String
   org                    OrganizationChild    @relation(fields: [orgId], references: [id])
   registrations          Registration[]
-  eventTickets           EventTicket[]
+  TicketCategories       TicketCategory[]
   eventAnnouncements     EventAnnouncements[]
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
