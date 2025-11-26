@@ -26,8 +26,8 @@ export class EventAnnouncementsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createEventAnnouncementDto: CreateEventAnnouncementDto, @Request() req) {
-    return this.eventAnnouncementsService.create(createEventAnnouncementDto, req.user);
+  create(@Body() createEventAnnouncementDto: CreateEventAnnouncementDto) {
+    return this.eventAnnouncementsService.create(createEventAnnouncementDto);
   }
 
   // @Get('/event/:eventId')
@@ -39,18 +39,16 @@ export class EventAnnouncementsController {
   findAll(
     @Query('eventId') eventId?: string,
     @Query('organizationId') organizationId?: string,
-    @Request() req?
   ) {
     return this.eventAnnouncementsService.findAll({
       eventId,
       organizationId,
-      user: req.user,
     });
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @Request() req) {
-    return this.eventAnnouncementsService.findOne(id, req.user);
+  findOne(@Param('id') id: string) {
+    return this.eventAnnouncementsService.findOne(id);
   }
 
   @Patch('/update/:id')
@@ -58,14 +56,13 @@ export class EventAnnouncementsController {
   update(
     @Param('id') id: string,
     @Body() updateEventAnnouncementDto: UpdateEventAnnouncementDto,
-    @Request() req,
   ) {
-    return this.eventAnnouncementsService.update(id, updateEventAnnouncementDto, req.user);
+    return this.eventAnnouncementsService.update(id, updateEventAnnouncementDto);
   }
 
   @Delete('/delete/:id')
   @HttpCode(HttpStatus.OK)
-  remove(@Param('id') id: string, @Request() req) {
-    return this.eventAnnouncementsService.remove(id, req.user);
+  remove(@Param('id') id: string) {
+    return this.eventAnnouncementsService.remove(id);
   }
 }

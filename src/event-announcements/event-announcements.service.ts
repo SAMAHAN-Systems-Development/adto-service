@@ -34,7 +34,7 @@ export class EventAnnouncementsService {
       if (!event) {
         throw new HttpException(
           `Event with id ${eventId} not found`,
-          HttpStatus.BAD_REQUEST,
+          HttpStatus.NOT_FOUND,
         );
       }
 
@@ -68,7 +68,7 @@ export class EventAnnouncementsService {
 
       throw new HttpException(
         `Failed to create event announcement`,
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
 
@@ -81,7 +81,7 @@ export class EventAnnouncementsService {
       if (!event) {
         throw new HttpException(
           `Event with id ${eventId} not found`,
-          HttpStatus.BAD_REQUEST,
+          HttpStatus.NOT_FOUND,
         );
       }
 
@@ -112,7 +112,7 @@ export class EventAnnouncementsService {
 
       throw new HttpException(
         `Failed to fetch event announcements`,
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
 
@@ -164,7 +164,7 @@ export class EventAnnouncementsService {
 
       throw new HttpException(
         `Failed to fetch event announcements`,
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
 
@@ -202,7 +202,7 @@ export class EventAnnouncementsService {
 
       throw new HttpException(
         `Failed to fetch event announcement`,
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
 
@@ -240,7 +240,7 @@ export class EventAnnouncementsService {
           }
       throw new HttpException(
           `Failed to fetch event announcement`,
-           HttpStatus.BAD_REQUEST,
+           HttpStatus.INTERNAL_SERVER_ERROR,
           );
       }
   }
