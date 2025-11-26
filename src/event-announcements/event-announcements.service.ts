@@ -3,7 +3,6 @@ import { CreateEventAnnouncementDto } from './dto/create-event-announcement.dto'
 import { UpdateEventAnnouncementDto } from './dto/update-event-announcement.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { EventsService } from 'src/events/events.service';
-import { Prisma, UserType } from '@prisma/client';
 
 
 @Injectable()
@@ -12,17 +11,10 @@ export class EventAnnouncementsService {
     private readonly prisma: PrismaService,
     private eventService: EventsService,
   ) {}
-  async create(createEventAnnouncementDto: CreateEventAnnouncementDto, user: any) {
+  async create(createEventAnnouncementDto: CreateEventAnnouncementDto) {
     const { eventId, ...announcementDetails } = createEventAnnouncementDto;
 
-      console.log('User info:', {
-      role: user.role,
-      orgId: user.orgId,
-      email: user.email
-    });
-
-
-
+      
     if (!eventId) {
       throw new HttpException(
         'Event ID is required',
@@ -42,21 +34,6 @@ export class EventAnnouncementsService {
       if (!event) {
         throw new HttpException(
           `Event with id ${eventId} not found`,
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      // Superadmins (UserType.ADMIN) have read-only access
-      if (user.role === UserType.ADMIN) {
-        throw new HttpException(
-          'Superadmins have read-only access to announcements',
-          HttpStatus.FORBIDDEN,
-        );
-      }
-
-      if (user.role === UserType.ORGANIZATION && event.orgId !== user.orgId) {
-        throw new HttpException(
-          `You can only create announcements for your organization events`,
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -97,7 +74,7 @@ export class EventAnnouncementsService {
 
   }
 
-  async findAllByEvent(eventId: string, user: any) {
+  async findAllByEvent(eventId: string) {
     try {
       const event = await this.eventService.findOne(eventId);
 
@@ -105,13 +82,6 @@ export class EventAnnouncementsService {
         throw new HttpException(
           `Event with id ${eventId} not found`,
           HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      if (user.role === UserType.ORGANIZATION && event.orgId !== user.orgId) {
-        throw new HttpException(
-          `You can only view announcements for your organization events`,
-          HttpStatus.FORBIDDEN,
         );
       }
 
@@ -151,14 +121,12 @@ export class EventAnnouncementsService {
   async findAll(filters: {
     eventId?: string;
     organizationId?: string;
-    user: any;
   }) {
-    const { eventId, organizationId, user } = filters;
+    const { eventId, organizationId} = filters;
 
     try {
       const where: any = {};
 
-      // Add filters
       if (eventId) {
         where.eventId = eventId;
       }
@@ -166,14 +134,6 @@ export class EventAnnouncementsService {
       if (organizationId) {
         where.event = {
           orgId: organizationId,
-        };
-      }
-
-      // Role-based filtering
-      if (user.role === UserType.ORGANIZATION) {
-        where.event = {
-          ...where.event,
-          orgId: user.orgId,
         };
       }
 
@@ -210,7 +170,7 @@ export class EventAnnouncementsService {
 
   }
 
-  async findOne(id: string, user: any) {
+  async findOne(id: string) {
     try {
       const announcement = await this.prisma.eventAnnouncements.findUnique({
         where: { id },
@@ -227,14 +187,6 @@ export class EventAnnouncementsService {
         throw new HttpException(
           `Event announcement with id ${id} not found`, 
           HttpStatus.NOT_FOUND,
-        );
-      }
-
-      // Check access rights
-      if (user.role === UserType.ORGANIZATION && announcement.event.orgId !== user.orgId) {
-        throw new HttpException(
-          'You can only view announcements for your organization events',
-          HttpStatus.FORBIDDEN,
         );
       }
 
@@ -259,19 +211,11 @@ export class EventAnnouncementsService {
   async update(
     id: string,
     updateEventAnnouncementDto: UpdateEventAnnouncementDto,
-    user: any,
   ) {
     try {
-        // Superadmins have read-only access
-      if (user.role === UserType.ADMIN) {
-        throw new HttpException(
-          'Superadmins have read-only access to announcements',
-          HttpStatus.FORBIDDEN,
-        );
-      }
 
       //Check if announcement exists and user has access
-      const existingAnnouncement = await this.findOne(id, user);
+      const existingAnnouncement = await this.findOne(id);
 
       const updatedAnnouncement = await this.prisma.eventAnnouncements.update({
         where: { id },
@@ -302,19 +246,10 @@ export class EventAnnouncementsService {
   }
 
 
-  async remove(id: string, user: any) {
+  async remove(id: string) {
     try {
 
-        // Superadmins have read-only access
-      if (user.role === UserType.ADMIN) {
-        throw new HttpException(
-          'Superadmins have read-only access to announcements',
-          HttpStatus.FORBIDDEN,
-        );
-      }
-
-      // Check if announcement exists and user has access
-      await this.findOne(id, user);
+      await this.findOne(id);
 
       await this.prisma.eventAnnouncements.delete({
         where: { id },
