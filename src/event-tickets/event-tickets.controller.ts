@@ -14,6 +14,8 @@ import { EventTicketsService } from './event-tickets.service';
 import { CreateEventTicketDto } from './dto/create-event-ticket.dto';
 import { UpdateEventTicketDto } from './dto/update-event-ticket.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { Roles } from 'src/auth/roles.decorator';
+import { UserType } from '@prisma/client';
 
 @Controller('tickets')
 export class EventTicketsController {
@@ -21,12 +23,14 @@ export class EventTicketsController {
 
   @Post('create')
   @UseGuards(AuthGuard)
+  @Roles(UserType.ADMIN)
   create(@Body() createEventTicketDto: CreateEventTicketDto, @Req() req: any) {
     return this.eventTicketsService.create(createEventTicketDto, req.user.orgId);
   }
 
   @Get()
   @UseGuards(AuthGuard)
+  @Roles(UserType.ADMIN)
   findAll(
     @Req() req: any,
     @Query('page') page?: number,
@@ -42,12 +46,14 @@ export class EventTicketsController {
 
   @Get(':id')
   @UseGuards(AuthGuard)
+  @Roles(UserType.ADMIN)
   findOne(@Param('id') id: string, @Req() req: any) {
     return this.eventTicketsService.findOne(id, req.user.orgId);
   }
 
   @Patch('update/:id')
   @UseGuards(AuthGuard)
+  @Roles(UserType.ADMIN)
   update(
     @Param('id') id: string,
     @Body() updateEventTicketDto: UpdateEventTicketDto,
@@ -58,6 +64,7 @@ export class EventTicketsController {
 
   @Delete('delete/:id')
   @UseGuards(AuthGuard)
+  @Roles(UserType.ADMIN)
   remove(@Param('id') id: string, @Req() req: any) {
     return this.eventTicketsService.remove(id, req.user.orgId);
   }

@@ -22,7 +22,17 @@ export class EventTicketsService {
     return parsed;
   }
 
+  private ensureOrgId(orgId?: string) {
+    if (!orgId) {
+      throw new HttpException(
+        'Forbidden: missing organization context',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+  }
+
   private async assertEventInOrg(eventId: string, orgId: string) {
+    this.ensureOrgId(orgId);
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
       select: { id: true, orgId: true },
@@ -43,6 +53,7 @@ export class EventTicketsService {
   }
 
   async create(createEventTicketDto: CreateEventTicketDto, orgId: string) {
+    this.ensureOrgId(orgId);
     const { eventId, registrationDeadline, ...ticketData } = createEventTicketDto;
 
     await this.assertEventInOrg(eventId, orgId);
@@ -65,6 +76,7 @@ export class EventTicketsService {
   }
 
   async findAll(orgId: string, query: { page?: number; limit?: number; eventId?: string }) {
+    this.ensureOrgId(orgId);
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
     const skip = (page - 1) * limit;
@@ -105,6 +117,7 @@ export class EventTicketsService {
   }
 
   async findOne(id: string, orgId: string) {
+    this.ensureOrgId(orgId);
     const ticket = await this.prisma.ticketCategory.findUnique({
       where: { id },
       include: {
@@ -127,6 +140,7 @@ export class EventTicketsService {
   }
 
   async update(id: string, updateEventTicketDto: UpdateEventTicketDto, orgId: string) {
+    this.ensureOrgId(orgId);
     const existingTicket = await this.findOne(id, orgId);
     const { eventId, registrationDeadline, ...ticketData } = updateEventTicketDto;
 
@@ -164,6 +178,7 @@ export class EventTicketsService {
   }
 
   async remove(id: string, orgId: string) {
+    this.ensureOrgId(orgId);
     const ticket = await this.findOne(id, orgId);
 
     await this.prisma.ticketCategory.delete({
