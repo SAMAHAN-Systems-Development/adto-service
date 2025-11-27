@@ -201,7 +201,7 @@ export class EventsService {
               payment: true,
             },
           },
-          ticketCategories: true,
+          TicketCategories: true,
         },
       });
 
