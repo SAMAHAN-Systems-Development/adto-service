@@ -144,6 +144,7 @@ model Event {
   isArchived             Boolean              @default(false) // Event is archived
   orgId                  String
   org                    OrganizationChild    @relation(fields: [orgId], references: [id])
+  portalRequests         PortalRequests[]
   registrations          Registration[]
   TicketCategories       TicketCategory[]
   eventAnnouncements     EventAnnouncements[]
@@ -161,4 +162,14 @@ model EventAnnouncements {
   content          String
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
+}
+
+model PortalRequests {
+  id String @id @default(cuid())
+  eventId String
+  event Event @relation(fields: [eventId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isApproved Boolean @default(false)
+  portalLink String?
 }
