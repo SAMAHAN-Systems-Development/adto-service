@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { CreateEventAnnouncementDto } from './dto/create-event-announcement.dto';
 import { UpdateEventAnnouncementDto } from './dto/update-event-announcement.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { EventsService } from 'src/events/events.service';
+
 
 @Injectable()
 export class EventAnnouncementsService {
@@ -12,91 +13,260 @@ export class EventAnnouncementsService {
   ) {}
   async create(createEventAnnouncementDto: CreateEventAnnouncementDto) {
     const { eventId, ...announcementDetails } = createEventAnnouncementDto;
+
+      
     if (!eventId) {
-      throw new Error('Event ID is required to create an announcement');
+      throw new HttpException(
+        'Event ID is required',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
-    const event = await this.eventService.findOne(eventId);
+    try {
+      const event = await this.eventService.findOne(eventId)
 
-    if (!event) {
-      throw new Error(`Event with id ${eventId} not found`);
-    }
+        console.log('Event info:', {
+        id: event.id,
+        name: event.name,
+        orgId: event.orgId
+      });
 
-    const eventAnnouncement = await this.prisma.eventAnnouncements.create({
-      data: {
-        ...announcementDetails,
-        event: {
-          connect: { id: eventId },
+      if (!event) {
+        throw new HttpException(
+          `Event with id ${eventId} not found`,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const eventAnnouncement = await this.prisma.eventAnnouncements.create({
+        data: {
+          ...announcementDetails,
+          event: {
+            connect: { id: eventId },
+          },
         },
-      },
-    });
+        include: {
+          event: {
+            include: {
+              org: true,
+            },
+          },
+        },
+      });
 
-    if (!eventAnnouncement) {
-      throw new Error('Failed to create event announcement');
+
+      return {
+        message: 'Event announcement created successfully',
+        data: eventAnnouncement,
+        statusCode: HttpStatus.CREATED,
+      };
+
+    } catch (error) {
+      if (error instanceof HttpException) {
+            throw error;
+      }
+
+      throw new HttpException(
+        `Failed to create event announcement`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
 
-    return eventAnnouncement;
   }
 
   async findAllByEvent(eventId: string) {
-    const eventAnnouncements = await this.prisma.eventAnnouncements.findMany({
-      where: { eventId },
-    });
+    try {
+      const event = await this.eventService.findOne(eventId);
 
-    if (!eventAnnouncements) {
-      throw new Error('No event announcements found for this event');
+      if (!event) {
+        throw new HttpException(
+          `Event with id ${eventId} not found`,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const announcements = await this.prisma.eventAnnouncements.findMany({
+        where: { eventId },
+        include: {
+          event: {
+            include: {
+              org: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      return {
+        message: 'Event announcements fetched successfully',
+        data: announcements,
+        statusCode: HttpStatus.OK,
+      };
+
+    }catch (error){
+      if (error instanceof HttpException) {
+          throw error;
+      }
+
+      throw new HttpException(
+        `Failed to fetch event announcements`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
 
-    return eventAnnouncements;
   }
 
-  async findAll() {
-    const eventAnnouncements = this.prisma.eventAnnouncements.findMany();
+  async findAll(filters: {
+    eventId?: string;
+    organizationId?: string;
+  }) {
+    const { eventId, organizationId} = filters;
 
-    if (!eventAnnouncements) {
-      throw new Error('No event announcements found');
+    try {
+      const where: any = {};
+
+      if (eventId) {
+        where.eventId = eventId;
+      }
+
+      if (organizationId) {
+        where.event = {
+          orgId: organizationId,
+        };
+      }
+
+      const announcements = await this.prisma.eventAnnouncements.findMany({
+        where,
+        include: {
+          event: {
+            include: {
+              org: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      return {
+        message: 'Event announcements fetched successfully',
+        data: announcements,
+        statusCode: HttpStatus.OK,
+      };
+
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        `Failed to fetch event announcements`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
 
-    return eventAnnouncements;
   }
 
   async findOne(id: string) {
-    const eventAnnouncement = this.prisma.eventAnnouncements.findUnique({
-      where: { id },
-    });
+    try {
+      const announcement = await this.prisma.eventAnnouncements.findUnique({
+        where: { id },
+        include: {
+          event: {
+            include: {
+              org: true,
+            },
+          },
+        },
+      });
 
-    if (!eventAnnouncement) {
-      throw new Error(`Event announcement with id ${id} not found`);
+      if (!announcement) {
+        throw new HttpException(
+          `Event announcement with id ${id} not found`, 
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      return {
+        message: 'Event announcement fetched successfully',
+        data: announcement,
+        statusCode: HttpStatus.OK,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        `Failed to fetch event announcement`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
 
-    return eventAnnouncement;
   }
 
   async update(
     id: string,
     updateEventAnnouncementDto: UpdateEventAnnouncementDto,
   ) {
-    const updatedEventAnnouncement = this.prisma.eventAnnouncements.update({
-      where: { id },
-      data: updateEventAnnouncementDto,
-    });
+    try {
 
-    if (!updatedEventAnnouncement) {
-      throw new Error(`Failed to update event announcement with id ${id}`);
-    }
+      //Check if announcement exists and user has access
+      const existingAnnouncement = await this.findOne(id);
 
-    return updatedEventAnnouncement;
+      const updatedAnnouncement = await this.prisma.eventAnnouncements.update({
+        where: { id },
+        data: updateEventAnnouncementDto,
+        include: {
+          event: {
+            include: {
+              org: true,
+            },
+          },
+        },
+      });
+
+      return {
+        message: 'Event announcement updated successfully',
+        data: updatedAnnouncement,
+        statusCode: HttpStatus.OK,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+          }
+      throw new HttpException(
+          `Failed to fetch event announcement`,
+           HttpStatus.INTERNAL_SERVER_ERROR,
+          );
+      }
   }
 
+
   async remove(id: string) {
-    const deletedEventAnnouncement = this.prisma.eventAnnouncements.delete({
-      where: { id },
-    });
+    try {
 
-    if (!deletedEventAnnouncement) {
-      throw new Error(`Failed to delete event announcement with id ${id}`);
+      await this.findOne(id);
+
+      await this.prisma.eventAnnouncements.delete({
+        where: { id },
+      });
+
+      return {
+        message: 'Event announcement deleted successfully',
+        statusCode: HttpStatus.OK,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Failed to delete event announcement',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
-
-    return deletedEventAnnouncement;
   }
 }

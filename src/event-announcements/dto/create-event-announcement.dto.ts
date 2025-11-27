@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
 import { AnnouncementType } from '@prisma/client';
 
 export class CreateEventAnnouncementDto {
@@ -12,9 +12,13 @@ export class CreateEventAnnouncementDto {
 
   @IsNotEmpty()
   @IsString()
+  @MinLength(1)
+  @MaxLength(200)
   title: string;
 
   @IsNotEmpty()
   @IsString()
+  @MinLength(1)
+  @MaxLength(1000)
   content: string;
 }

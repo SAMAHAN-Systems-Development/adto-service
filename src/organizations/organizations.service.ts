@@ -240,7 +240,7 @@ export class OrganizationsService {
         events: {
           include: {
             registrations: true,
-            ticketCategories: true,
+            TicketCategories: true,
           },
         },
       },
@@ -423,7 +423,7 @@ export class OrganizationsService {
       events: {
         include: {
           registrations: true,
-          ticketCategories: true,
+          TicketCategories: true,
         },
       },
     };
