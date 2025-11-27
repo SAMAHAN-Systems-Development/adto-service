@@ -19,7 +19,8 @@ import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { AuthGuard } from 'src/auth/auth.guard'; 
+import { AuthGuard } from 'src/auth/auth.guard';
+import { Public } from 'src/auth/public.decorator'; 
 
 @Controller('organizations')
 export class OrganizationsController {
@@ -47,7 +48,7 @@ export class OrganizationsController {
     });
   }
 
-  
+  @Public()
   @Get('/all')
   findAllOrganizationsWithoutFilters() {
     return this.organizationsService.findAllOrganizationsWithoutFilters();
