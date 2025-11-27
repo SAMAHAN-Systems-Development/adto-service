@@ -1,34 +1,71 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { EventTicketsService } from './event-tickets.service';
 import { CreateEventTicketDto } from './dto/create-event-ticket.dto';
 import { UpdateEventTicketDto } from './dto/update-event-ticket.dto';
+import { AuthGuard } from 'src/auth/auth.guard';
+import { Roles } from 'src/auth/roles.decorator';
+import { UserType } from '@prisma/client';
 
-@Controller('event-tickets')
+@Controller('tickets')
 export class EventTicketsController {
   constructor(private readonly eventTicketsService: EventTicketsService) {}
 
-  @Post()
-  create(@Body() createEventTicketDto: CreateEventTicketDto) {
-    return this.eventTicketsService.create(createEventTicketDto);
+  @Post('create')
+  @UseGuards(AuthGuard)
+  @Roles(UserType.ADMIN)
+  create(@Body() createEventTicketDto: CreateEventTicketDto, @Req() req: any) {
+    return this.eventTicketsService.create(createEventTicketDto, req.user.orgId);
   }
 
   @Get()
-  findAll() {
-    return this.eventTicketsService.findAll();
+  @UseGuards(AuthGuard)
+  @Roles(UserType.ADMIN)
+  findAll(
+    @Req() req: any,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('eventId') eventId?: string,
+  ) {
+    return this.eventTicketsService.findAll(req.user.orgId, {
+      page: Number(page) || 1,
+      limit: Number(limit) || 10,
+      eventId,
+    });
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.eventTicketsService.findOne(+id);
+  @UseGuards(AuthGuard)
+  @Roles(UserType.ADMIN)
+  findOne(@Param('id') id: string, @Req() req: any) {
+    return this.eventTicketsService.findOne(id, req.user.orgId);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateEventTicketDto: UpdateEventTicketDto) {
-    return this.eventTicketsService.update(+id, updateEventTicketDto);
+  @Patch('update/:id')
+  @UseGuards(AuthGuard)
+  @Roles(UserType.ADMIN)
+  update(
+    @Param('id') id: string,
+    @Body() updateEventTicketDto: UpdateEventTicketDto,
+    @Req() req: any,
+  ) {
+    return this.eventTicketsService.update(id, updateEventTicketDto, req.user.orgId);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.eventTicketsService.remove(+id);
+  @Delete('delete/:id')
+  @UseGuards(AuthGuard)
+  @Roles(UserType.ADMIN)
+  remove(@Param('id') id: string, @Req() req: any) {
+    return this.eventTicketsService.remove(id, req.user.orgId);
   }
 }
