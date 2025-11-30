@@ -23,14 +23,14 @@ export class EventTicketsController {
 
   @Post('create')
   @UseGuards(AuthGuard)
-  @Roles(UserType.ADMIN)
+  @Roles(UserType.ORGANIZATION)
   create(@Body() createEventTicketDto: CreateEventTicketDto, @Req() req: any) {
     return this.eventTicketsService.create(createEventTicketDto, req.user.orgId);
   }
 
   @Get()
   @UseGuards(AuthGuard)
-  @Roles(UserType.ADMIN)
+  @Roles(UserType.ORGANIZATION, UserType.ADMIN)
   findAll(
     @Req() req: any,
     @Query('page') page?: number,
@@ -46,14 +46,14 @@ export class EventTicketsController {
 
   @Get(':id')
   @UseGuards(AuthGuard)
-  @Roles(UserType.ADMIN)
+  @Roles(UserType.ORGANIZATION, UserType.ADMIN)
   findOne(@Param('id') id: string, @Req() req: any) {
     return this.eventTicketsService.findOne(id, req.user.orgId);
   }
 
   @Patch('update/:id')
   @UseGuards(AuthGuard)
-  @Roles(UserType.ADMIN)
+  @Roles(UserType.ORGANIZATION)
   update(
     @Param('id') id: string,
     @Body() updateEventTicketDto: UpdateEventTicketDto,
@@ -64,7 +64,7 @@ export class EventTicketsController {
 
   @Delete('delete/:id')
   @UseGuards(AuthGuard)
-  @Roles(UserType.ADMIN)
+  @Roles(UserType.ORGANIZATION)
   remove(@Param('id') id: string, @Req() req: any) {
     return this.eventTicketsService.remove(id, req.user.orgId);
   }
