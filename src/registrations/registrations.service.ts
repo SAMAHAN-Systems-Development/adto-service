@@ -100,26 +100,38 @@ export class RegistrationsService {
 
     // Create user, booker, and registration in a transaction
     const result = await this.prisma.$transaction(async (prisma) => {
-      // Create user
-      const user = await prisma.user.create({
-        data: {
-          email: schoolEmail,
-          password: '', // No password for public registrations
-          userType: 'USER',
-          isActive: true,
-        },
+      // Find or create user
+      let user = await prisma.user.findUnique({
+        where: { email: schoolEmail },
       });
 
-      // Create booker
-      const booker = await prisma.booker.create({
-        data: {
-          contactNumber: '', // Not collected in this form
-          courseId: defaultCourse.id,
-          isAlumni,
-          batch,
-          userId: user.id,
-        },
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            email: schoolEmail,
+            password: '', // No password for public registrations
+            userType: 'USER',
+            isActive: true,
+          },
+        });
+      }
+
+      // Find or create booker
+      let booker = await prisma.booker.findUnique({
+        where: { userId: user.id },
       });
+
+      if (!booker) {
+        booker = await prisma.booker.create({
+          data: {
+            contactNumber: '', // Not collected in this form
+            courseId: defaultCourse.id,
+            isAlumni,
+            batch,
+            userId: user.id,
+          },
+        });
+      }
 
       // Create registration
       const registration = await prisma.registration.create({
