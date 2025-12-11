@@ -145,7 +145,7 @@ model Event {
   orgId                  String
   org                    OrganizationChild    @relation(fields: [orgId], references: [id])
   registrations          Registration[]
-  TicketCategories       TicketCategory[]
+  ticketCategories       TicketCategory[]
   eventAnnouncements     EventAnnouncements[]
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
