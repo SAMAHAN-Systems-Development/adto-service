@@ -92,7 +92,7 @@ export class EventsService {
       }),
       ...(price &&
         price !== 'all' && {
-          TicketCategories: {
+          ticketCategories: {
             ...(price === 'free' && {
               some: {
                 price: 0,
@@ -176,7 +176,7 @@ export class EventsService {
       }),
       ...(price &&
         price !== 'all' && {
-          TicketCategories: {
+          ticketCategories: {
             ...(price === 'free' && {
               some: {
                 price: 0,
@@ -233,7 +233,7 @@ export class EventsService {
               payment: true,
             },
           },
-          TicketCategories: true,
+          ticketCategories: true,
         },
       });
 
