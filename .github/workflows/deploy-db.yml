@@ -1,0 +1,28 @@
+name: Deploy Database Changes
+
+on:
+  workflow_dispatch: # This enables the manual button trigger
+
+jobs:
+  deploy-migrations:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Use the Node version compatible with your NestJS app
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Prisma Migrate Deploy
+        # We use 'migrate deploy' instead of 'dev'.
+        # 'deploy' is specifically for CI/CD; it applies pending migrations without resetting the DB.
+        run: npx prisma migrate deploy
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
