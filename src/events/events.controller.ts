@@ -37,6 +37,7 @@ export class EventsController {
     @Query('organizationParentId') organizationParentId?: string,
     @Query('searchFilter') searchFilter?: string,
     @Query('orderBy') orderBy?: 'asc' | 'desc',
+    @Query('price') price?: 'free' | 'paid' | 'all',
   ) {
     return this.eventsService.findAll({
       page: Number(page) || 1,
@@ -48,6 +49,7 @@ export class EventsController {
       organizationId: organizationId || undefined,
       organizationParentId: organizationParentId || undefined,
       orderBy: orderBy || 'asc',
+      price: price || undefined,
     });
   }
 
@@ -61,6 +63,7 @@ export class EventsController {
     @Query('isOpenToOutsiders') isOpenToOutsiders?: boolean,
     @Query('searchFilter') searchFilter?: string,
     @Query('orderBy') orderBy?: 'asc' | 'desc',
+    @Query('price') price?: 'free' | 'paid' | 'all',
   ) {
     return this.eventsService.findAllByOrganizationChild(id, {
       page: Number(page) || 1,
@@ -70,6 +73,7 @@ export class EventsController {
       isOpenToOutsiders: isOpenToOutsiders || undefined,
       searchFilter: searchFilter || undefined,
       orderBy: orderBy || 'asc',
+      price: price || undefined,
     });
   }
 
@@ -98,6 +102,4 @@ export class EventsController {
   update(@Param('id') id: string, @Body() updateEventDto: UpdateEventDto) {
     return this.eventsService.update(id, updateEventDto);
   }
-
-
 }
