@@ -14,14 +14,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # Use the Node version compatible with your NestJS app
+          node-version: '20' 
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm install
 
       - name: Run Prisma Migrate Deploy
-        # We use 'migrate deploy' instead of 'dev'.
-        # 'deploy' is specifically for CI/CD; it applies pending migrations without resetting the DB.
         run: npx prisma migrate deploy
         env:
           DB_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
