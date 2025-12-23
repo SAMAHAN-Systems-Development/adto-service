@@ -8,28 +8,18 @@ async function main() {
 
   // --- Clear existing data (optional, use with caution) ---
   // Order matters due to foreign key constraints
-  await prisma.payment.deleteMany();
+
   await prisma.registration.deleteMany();
   await prisma.ticketCategory.deleteMany();
   await prisma.eventAnnouncements.deleteMany();
   await prisma.event.deleteMany();
   await prisma.organizationGroup.deleteMany();
-  await prisma.booker.deleteMany();
+
   await prisma.organizationChild.deleteMany();
   await prisma.user.deleteMany();
-  await prisma.course.deleteMany();
+
   await prisma.organizationParent.deleteMany();
   console.log('Cleared existing data.');
-
-  const coursesData = [
-    { id: 'course_cs', name: 'Computer Science' },
-    { id: 'course_is', name: 'Information Systems' },
-    { id: 'course_it', name: 'Information Technology' },
-  ];
-  await prisma.course.createMany({
-    data: coursesData,
-  });
-  console.log(`Created ${coursesData.length} courses.`);
 
   const orgParentsData = [
     {
@@ -376,12 +366,12 @@ async function main() {
   // Update users to connect them to their organizations
   await prisma.user.update({
     where: { id: 'user_org_a' },
-    data: { organizationId: 'org_a' }
+    data: { organizationId: 'org_a' },
   });
 
   await prisma.user.update({
     where: { id: 'user_org_b' },
-    data: { organizationId: 'org_b' }
+    data: { organizationId: 'org_b' },
   });
 
   console.log('Updated organization users with organizationId.');
@@ -465,30 +455,6 @@ async function main() {
     data: orgGroupsData,
   });
   console.log(`Created ${orgGroupsData.length} organization groups.`);
-
-  // --- Seed Bookers ---
-  const bookersData = [
-    {
-      id: 'booker_1',
-      contactNumber: '1234567890',
-      courseId: 'course_cs',
-      isAlumni: false,
-      batch: 2025,
-      userId: 'user_student_1',
-    },
-    {
-      id: 'booker_2',
-      contactNumber: '0987654321',
-      courseId: 'course_is',
-      isAlumni: true,
-      batch: 2020,
-      userId: 'user_student_2',
-    },
-  ];
-  await prisma.booker.createMany({
-    data: bookersData,
-  });
-  console.log(`Created ${bookersData.length} bookers.`);
 
   // --- Seed Events ---
   // Generate 5 events for each organization
@@ -675,86 +641,86 @@ async function main() {
   // --- Seed Registrations ---
   const registrationsData = [];
 
-  // We only have 2 bookers, so we'll create them first and then use them for each event
-  const bookerIds = bookersData.map((booker) => booker.id);
+  // Sample student names
+  const studentNames = ['Juan Dela Cruz', 'Maria Santos', 'Jose Garcia'];
 
-  // For each event, create 5 registrations if possible (limited by our booker count)
-  eventsData.forEach((event) => {
-    // Get ticket categories for this event
-    const eventTicketCategories = ticketCategoriesData.filter(
-      (ticket) => ticket.eventId === event.id,
-    );
+  // Sample courses
+  const courses = [
+    'Computer Science',
+    'Information Technology',
+    'Business Administration',
+  ];
 
-    // Skip if no ticket categories for this event
-    if (eventTicketCategories.length === 0) {
-      return;
-    }
+  // Sample clusters (matching organization parents)
+  const clusters = [
+    'Computer Studies Cluster',
+    'Business & Management Cluster',
+  ];
 
-    // Create registrations (up to 5 per event)
-    const registrationsPerEvent = Math.min(
-      5,
-      bookerIds.length * eventTicketCategories.length,
-    );
+  // Year levels
+  const yearLevels = ['1', '2', '3', '4', '5'];
 
-    for (let i = 0; i < registrationsPerEvent; i++) {
-      // Cycle through available bookers and ticket categories
-      const bookerId = bookerIds[i % bookerIds.length];
-      const ticketCategory =
-        eventTicketCategories[i % eventTicketCategories.length];
+  // For each ticket category, create 0-10 random registrations
+  ticketCategoriesData.forEach((ticket) => {
+    // Randomly decide how many registrations (0-10)
+    const numRegistrations = 1;
 
-      // Create registration
-      registrationsData.push({
-        id: `reg_${event.id}_${i + 1}`,
-        bookerId: bookerId,
-        eventId: event.id,
-        ticketCategoryId: ticketCategory.id,
-        confirmedAt: Math.random() > 0.3 ? new Date() : null, // 70% confirmed
-        isAttended: Math.random() > 0.5, // 50% attended
-      });
+    for (let i = 0; i < numRegistrations; i++) {
+      // Check if registration deadline has passed
+      const now = new Date();
+      const isBeforeDeadline = new Date(ticket.registrationDeadline) > now;
+
+      // Only create registrations if before deadline or randomly for past events
+      if (isBeforeDeadline || Math.random() > 0.5) {
+        // Check if we've reached capacity
+        const existingRegsForTicket = registrationsData.filter(
+          (r) => r.ticketCategoryId === ticket.id,
+        ).length;
+
+        if (existingRegsForTicket < ticket.capacity) {
+          // Random student data
+          const studentName =
+            studentNames[Math.floor(Math.random() * studentNames.length)];
+          const course = courses[Math.floor(Math.random() * courses.length)];
+          const cluster = clusters[Math.floor(Math.random() * clusters.length)];
+          const yearLevel =
+            yearLevels[Math.floor(Math.random() * yearLevels.length)];
+
+          // Generate email from name
+          const emailName = studentName
+            .toLowerCase()
+            .replace(/ /g, '.')
+            .replace(/[^a-z.]/g, '');
+          const email = `${emailName}${i}@addu.edu.ph`;
+
+          // Randomly determine if confirmed and attended
+          const confirmedAt = Math.random() > 0.3 ? new Date() : null;
+          const isAttended = false;
+
+          // Get the event for this ticket
+          const event = eventsData.find((e) => e.id === ticket.eventId);
+
+          registrationsData.push({
+            id: `reg_${ticket.id}_${i + 1}`,
+            fullName: studentName,
+            email: email,
+            yearLevel: yearLevel,
+            course: course,
+            cluster: cluster,
+            ticketCategoryId: ticket.id,
+            eventId: event?.id || ticket.eventId,
+            confirmedAt: confirmedAt,
+            isAttended: isAttended,
+          });
+        }
+      }
     }
   });
-
-  // If we have too many registrations, limit to a reasonable number
-  const MAX_REGISTRATIONS = 1000;
-  if (registrationsData.length > MAX_REGISTRATIONS) {
-    registrationsData.splice(MAX_REGISTRATIONS);
-  }
 
   await prisma.registration.createMany({
     data: registrationsData,
   });
   console.log(`Created ${registrationsData.length} registrations.`);
-
-  // --- Seed Payments ---
-  // Create payments for confirmed registrations with non-free tickets
-  const paymentsData = [];
-
-  // Process each registration
-  registrationsData.forEach((registration) => {
-    // Find the ticket category for this registration
-    const ticketCategory = ticketCategoriesData.find(
-      (ticket) => ticket.id === registration.ticketCategoryId,
-    );
-
-    // Only create payment if the ticket has a price > 0 and registration is confirmed
-    if (
-      ticketCategory &&
-      ticketCategory.price > 0 &&
-      registration.confirmedAt
-    ) {
-      paymentsData.push({
-        id: `payment_${registration.id}`,
-        amount: ticketCategory.price,
-        currency: 'PHP',
-        registrationId: registration.id,
-      });
-    }
-  });
-
-  await prisma.payment.createMany({
-    data: paymentsData,
-  });
-  console.log(`Created ${paymentsData.length} payments.`);
 
   // --- Seed Event Announcements ---
   const eventAnnouncementsData = [];

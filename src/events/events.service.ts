@@ -12,11 +12,7 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class EventsService {
-  constructor(
-    private readonly prisma: PrismaService
-  ) {}
-
-  
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(createEventDto: CreateEventDto, orgId: string) {
     const createdEvent = await this.prisma.event.create({
@@ -44,7 +40,6 @@ export class EventsService {
       data: createdEvent,
     };
   }
-
 
   async findAll(query: {
     page?: number;
@@ -122,7 +117,6 @@ export class EventsService {
     };
   }
 
-
   async findAllByOrganizationChild(
     orgId: string,
     query: {
@@ -196,11 +190,7 @@ export class EventsService {
         },
         include: {
           org: true,
-          registrations: {
-            include: {
-              payment: true,
-            },
-          },
+
           TicketCategories: true,
         },
       });
@@ -212,9 +202,8 @@ export class EventsService {
   }
 
   async update(id: string, updateEventDto: UpdateEventDto) {
-    
     await this.findOne(id);
-    
+
     try {
       const updatedEvent = await this.prisma.event.update({
         where: {
@@ -223,8 +212,12 @@ export class EventsService {
         data: {
           ...updateEventDto,
           // Convert date strings to Date objects if they exist
-          ...(updateEventDto.dateStart && { dateStart: new Date(updateEventDto.dateStart) }),
-          ...(updateEventDto.dateEnd && { dateEnd: new Date(updateEventDto.dateEnd) }),
+          ...(updateEventDto.dateStart && {
+            dateStart: new Date(updateEventDto.dateStart),
+          }),
+          ...(updateEventDto.dateEnd && {
+            dateEnd: new Date(updateEventDto.dateEnd),
+          }),
         },
         include: {
           org: true,
@@ -242,7 +235,6 @@ export class EventsService {
       );
     }
   }
-
 
   async publishEvent(id: string) {
     await this.findOne(id);
@@ -268,8 +260,6 @@ export class EventsService {
     }
   }
 
-  
-
   async softDelete(id: string) {
     await this.findOne(id);
     try {
@@ -294,7 +284,6 @@ export class EventsService {
     }
   }
 
-  
   async archive(id: string) {
     await this.findOne(id);
     try {
