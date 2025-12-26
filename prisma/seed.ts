@@ -697,9 +697,6 @@ async function main() {
           const confirmedAt = Math.random() > 0.3 ? new Date() : null;
           const isAttended = false;
 
-          // Get the event for this ticket
-          const event = eventsData.find((e) => e.id === ticket.eventId);
-
           registrationsData.push({
             id: `reg_${ticket.id}_${i + 1}`,
             fullName: studentName,
@@ -708,7 +705,6 @@ async function main() {
             course: course,
             cluster: cluster,
             ticketCategoryId: ticket.id,
-            eventId: event?.id || ticket.eventId,
             confirmedAt: confirmedAt,
             isAttended: isAttended,
           });
