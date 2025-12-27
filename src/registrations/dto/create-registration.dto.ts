@@ -24,8 +24,4 @@ export class CreateRegistrationDto {
   @IsString()
   @IsNotEmpty()
   ticketCategoryId: string;
-
-  @IsString()
-  @IsNotEmpty()
-  eventId: string;
 }

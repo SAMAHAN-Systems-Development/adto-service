@@ -8,9 +8,11 @@ export class RegistrationsService {
   constructor(private readonly prisma: PrismaService) {}
   async create(createRegistrationDto: CreateRegistrationDto) {
     try {
+      const { ticketCategoryId, email, ...registrationData } =
+        createRegistrationDto;
       // Verify ticket category exists and has capacity
       const ticketCategory = await this.prisma.ticketCategory.findUnique({
-        where: { id: createRegistrationDto.ticketCategoryId },
+        where: { id: ticketCategoryId },
         include: {
           event: true,
           _count: { select: { registrations: true } },
@@ -21,6 +23,23 @@ export class RegistrationsService {
         throw new HttpException(
           'Ticket category not found',
           HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // Check for duplicate registration - same email for same event
+      const existingRegistration = await this.prisma.registration.findFirst({
+        where: {
+          email: email,
+          ticketCategory: {
+            eventId: ticketCategory.eventId,
+          },
+        },
+      });
+
+      if (existingRegistration) {
+        throw new HttpException(
+          'You have already registered for this event',
+          HttpStatus.CONFLICT,
         );
       }
 
@@ -41,20 +60,13 @@ export class RegistrationsService {
       }
 
       const createdRegistration = await this.prisma.registration.create({
-        data: createRegistrationDto,
+        data: { ticketCategoryId, email, ...registrationData },
         include: {
           ticketCategory: {
             include: { event: true },
           },
         },
       });
-
-      if (createdRegistration instanceof Error) {
-        throw new HttpException(
-          'Registration could not be created',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
 
       return {
         message: 'Registration created successfully',
@@ -137,6 +149,7 @@ export class RegistrationsService {
 
   async update(id: string, updateRegistrationDto: UpdateRegistrationDto) {
     try {
+      this.findOne(id);
       const updatedRegistration = await this.prisma.registration.update({
         where: { id },
         data: updateRegistrationDto,
@@ -157,7 +170,7 @@ export class RegistrationsService {
         throw error;
       }
       throw new HttpException(
-        `Failed to fetch registration`,
+        `Failed to update registration`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
