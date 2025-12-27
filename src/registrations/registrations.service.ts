@@ -1,163 +1,178 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateRegistrationDto } from './dto/create-registration.dto';
+import { UpdateRegistrationDto } from './dto/update-registration.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class RegistrationsService {
   constructor(private readonly prisma: PrismaService) {}
-
   async create(createRegistrationDto: CreateRegistrationDto) {
-    const {
-      fullName,
-      schoolEmail,
-      clusterId,
-      yearLevel,
-      eventId,
-      ticketCategoryId,
-    } = createRegistrationDto;
-
-    // Verify event exists and is published
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-    });
-
-    if (!event) {
-      throw new NotFoundException('Event not found');
-    }
-
-    if (!event.isPublished) {
-      throw new BadRequestException('Event is not published');
-    }
-
-    // Verify ticket category exists and belongs to the event
-    const ticketCategory = await this.prisma.ticketCategory.findUnique({
-      where: { id: ticketCategoryId },
-    });
-
-    if (!ticketCategory) {
-      throw new NotFoundException('Ticket category not found');
-    }
-
-    if (ticketCategory.eventId !== eventId) {
-      throw new BadRequestException('Ticket category does not belong to this event');
-    }
-
-    // Check if registration deadline has passed
-    if (new Date() > ticketCategory.registrationDeadline) {
-      throw new BadRequestException('Registration deadline has passed');
-    }
-
-    // Verify organization parent (cluster) exists
-    const organizationParent = await this.prisma.organizationParent.findUnique({
-      where: { id: clusterId },
-    });
-
-    if (!organizationParent) {
-      throw new NotFoundException('Cluster not found');
-    }
-
-    // Check for duplicate registration by email for this event
-    const existingRegistration = await this.prisma.registration.findFirst({
-      where: {
-        eventId,
-        booker: {
-          user: {
-            email: schoolEmail,
-          },
-        },
-      },
-    });
-
-    if (existingRegistration) {
-      throw new BadRequestException('You have already registered for this event');
-    }
-
-    // Use default course (Computer Science) - can be made configurable later
-    const defaultCourse = await this.prisma.course.findFirst({
-      where: { id: 'course_cs' },
-    });
-
-    if (!defaultCourse) {
-      throw new Error('Default course not found');
-    }
-
-    // Parse yearLevel to determine batch (approximate)
-    const currentYear = new Date().getFullYear();
-    let batch: number | null = null;
-    let isAlumni = false;
-
-    if (yearLevel === 'Graduate') {
-      isAlumni = true;
-      batch = currentYear - 1; // Rough estimate
-    } else {
-      // Extract year number (e.g., "1st Year" -> 1)
-      const yearMatch = yearLevel.match(/(\d+)/);
-      if (yearMatch) {
-        const yearNumber = parseInt(yearMatch[1]);
-        batch = currentYear + (4 - yearNumber); // Expected graduation year
-      }
-    }
-
-    // Create user, booker, and registration in a transaction
-    const result = await this.prisma.$transaction(async (prisma) => {
-      // Find or create user
-      let user = await prisma.user.findUnique({
-        where: { email: schoolEmail },
-      });
-
-      if (!user) {
-        user = await prisma.user.create({
-          data: {
-            email: schoolEmail,
-            password: '', // No password for public registrations
-            userType: 'USER',
-            isActive: true,
-          },
-        });
-      }
-
-      // Find or create booker
-      let booker = await prisma.booker.findUnique({
-        where: { userId: user.id },
-      });
-
-      if (!booker) {
-        booker = await prisma.booker.create({
-          data: {
-            contactNumber: '', // Not collected in this form
-            courseId: defaultCourse.id,
-            isAlumni,
-            batch,
-            userId: user.id,
-          },
-        });
-      }
-
-      // Create registration
-      const registration = await prisma.registration.create({
-        data: {
-          bookerId: booker.id,
-          eventId,
-          ticketCategoryId,
-        },
+    try {
+      const { ticketCategoryId, email, ...registrationData } =
+        createRegistrationDto;
+      // Verify ticket category exists and has capacity
+      const ticketCategory = await this.prisma.ticketCategory.findUnique({
+        where: { id: ticketCategoryId },
         include: {
           event: true,
-          ticketCategory: true,
-          booker: {
-            include: {
-              user: true,
-              course: true,
-            },
+          _count: { select: { registrations: true } },
+        },
+      });
+
+      if (!ticketCategory) {
+        throw new HttpException(
+          'Ticket category not found',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // Check for duplicate registration - same email for same event
+      const existingRegistration = await this.prisma.registration.findFirst({
+        where: {
+          email: email,
+          ticketCategory: {
+            eventId: ticketCategory.eventId,
           },
         },
       });
 
-      return registration;
-    });
+      if (existingRegistration) {
+        throw new HttpException(
+          'You have already registered for this event',
+          HttpStatus.CONFLICT,
+        );
+      }
 
-    return {
-      message: 'Registration successful',
-      data: result,
-    };
+      // Check if registration deadline has passed
+      if (new Date() > ticketCategory.registrationDeadline) {
+        throw new HttpException(
+          'Registration deadline has passed',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Check capacity
+      if (ticketCategory._count.registrations >= ticketCategory.capacity) {
+        throw new HttpException(
+          'Ticket category is full',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const createdRegistration = await this.prisma.registration.create({
+        data: { ticketCategoryId, email, ...registrationData },
+        include: {
+          ticketCategory: {
+            include: { event: true },
+          },
+        },
+      });
+
+      return {
+        message: 'Registration created successfully',
+        data: createdRegistration,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        'Failed to create registration',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async findAll() {
+    try {
+      const registrations = await this.prisma.registration.findMany({
+        include: {
+          ticketCategory: {
+            include: { event: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      return {
+        message: 'Registrations fetched successfully',
+        data: registrations,
+        statusCode: HttpStatus.OK,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        'Failed to fetch registrations',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async findOne(id: string) {
+    try {
+      const registration = await this.prisma.registration.findUnique({
+        where: { id },
+        include: {
+          ticketCategory: {
+            include: { event: true },
+          },
+        },
+      });
+
+      if (!registration) {
+        throw new HttpException(
+          `Registration with id ${id} not found`,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      return {
+        message: 'Registration fetched successfully',
+        data: registration,
+        statusCode: HttpStatus.OK,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        `Failed to fetch registration`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async update(id: string, updateRegistrationDto: UpdateRegistrationDto) {
+    try {
+      this.findOne(id);
+      const updatedRegistration = await this.prisma.registration.update({
+        where: { id },
+        data: updateRegistrationDto,
+        include: {
+          ticketCategory: {
+            include: { event: true },
+          },
+        },
+      });
+
+      return {
+        message: 'Registration updated successfully',
+        data: updatedRegistration,
+        statusCode: HttpStatus.OK,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        `Failed to update registration`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }

@@ -34,14 +34,6 @@ export class UsersService {
         where: {
           id,
         },
-        include: {
-          booker: {
-            include: {
-              registrations: true,
-              course: true,
-            },
-          },
-        },
       });
 
       return currentBooker;
@@ -56,12 +48,6 @@ export class UsersService {
         isActive: true,
       },
       include: {
-        booker: {
-          include: {
-            registrations: true,
-            course: true,
-          },
-        },
         organization: true,
       },
     });
@@ -75,12 +61,6 @@ export class UsersService {
         id,
       },
       include: {
-        booker: {
-          include: {
-            registrations: true,
-            course: true,
-          },
-        },
         organization: true,
       },
     });
@@ -92,20 +72,11 @@ export class UsersService {
     const user = await this.prismaService.user.findUnique({
       where: { email },
       include: {
-        booker: {
-          include: {
-            registrations: true,
-            course: true,
-          },
-        },
         organization: true,
       },
     });
     if (!user) {
-      throw new HttpException(
-        'Email does not exist',
-        HttpStatus.NOT_FOUND,
-      );
+      throw new HttpException('Email does not exist', HttpStatus.NOT_FOUND);
     }
 
     return user;
