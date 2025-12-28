@@ -30,74 +30,71 @@ export class OrganizationsService {
   } as const;
 
   async create(createOrganizationDto: CreateOrganizationDto) {
-  const { email, password, ...organizationData } = createOrganizationDto;
+    const { email, password, ...organizationData } = createOrganizationDto;
 
-  if (!organizationData.name || !email) {
+    if (!organizationData.name || !email) {
       throw new HttpException(
         'Name and email are required fields',
         HttpStatus.BAD_REQUEST,
       );
-  }
-  try {
-    
+    }
+    try {
+      return await this.prisma.$transaction(async (prisma) => {
+        let userId = null;
+        if (email && password) {
+          const salt = await bcrypt.genSalt(10);
+          const hashedPassword = await bcrypt.hash(password, salt);
 
-
-    return await this.prisma.$transaction(async (prisma) => {
-      let userId = null;
-      if (email && password) {
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-        
-        const user = await prisma.user.create({
-          data: {
-            email,
-            password: hashedPassword,
-            userType: UserType.ORGANIZATION,
-            isActive: true,
-          },
-        });
-        userId = user.id;
-      }
-
-      const createdOrganization = await prisma.organizationChild.create({
-        data: {
-          ...organizationData,
-          userId,
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              email: true,
-              userType: true,
+          const user = await prisma.user.create({
+            data: {
+              email,
+              password: hashedPassword,
+              userType: UserType.ORGANIZATION,
               isActive: true,
             },
+          });
+          userId = user.id;
+        }
+
+        const createdOrganization = await prisma.organizationChild.create({
+          data: {
+            ...organizationData,
+            userId,
           },
-          organizationParents: {
-            include: {
-              organizationParent: true,
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                userType: true,
+                isActive: true,
+              },
+            },
+            organizationParents: {
+              include: {
+                organizationParent: true,
+              },
             },
           },
-        },
+        });
+
+        return {
+          message: 'Organization created successfully',
+          data: createdOrganization,
+          statusCode: HttpStatus.CREATED,
+        };
       });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
 
-      return {
-        message: 'Organization created successfully',
-        data: createdOrganization,
-        statusCode: HttpStatus.CREATED,
-      };
-    });
-  } catch (error) {
-    if (error instanceof HttpException) {
-      throw error;
+      throw new HttpException(
+        'Failed to create organization',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
-
-    throw new HttpException(
-      'Failed to create organization',
-      HttpStatus.INTERNAL_SERVER_ERROR,
-    );
   }
-}
 
   async findAll(query: {
     page?: number;
@@ -108,8 +105,9 @@ export class OrganizationsService {
     const { page = 1, limit = 10, searchFilter, orderBy = 'asc' } = query;
     const skip = (page - 1) * limit;
 
-    const where = {...this.buildOrganizationSearchFilter(searchFilter),
-      isArchived: false
+    const where = {
+      ...this.buildOrganizationSearchFilter(searchFilter),
+      isArchived: false,
     };
 
     try {
@@ -142,7 +140,6 @@ export class OrganizationsService {
         },
       };
     } catch (error) {
-      
       throw new HttpException(
         'Error fetching organizations',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -218,7 +215,6 @@ export class OrganizationsService {
         },
       };
     } catch (error) {
-      
       if (error instanceof HttpException) {
         throw error;
       }
@@ -239,18 +235,14 @@ export class OrganizationsService {
         organizationParents: true,
         events: {
           include: {
-            registrations: true,
             TicketCategories: true,
           },
         },
       },
     });
 
-    if(!organization){
-      throw new HttpException(
-        'Organization not found',
-        HttpStatus.NOT_FOUND
-      );
+    if (!organization) {
+      throw new HttpException('Organization not found', HttpStatus.NOT_FOUND);
     }
 
     return organization;
@@ -273,7 +265,6 @@ export class OrganizationsService {
         statusCode: HttpStatus.OK,
       };
     } catch (error) {
-
       if (error instanceof HttpException) {
         throw error;
       }
@@ -333,7 +324,6 @@ export class OrganizationsService {
         organization: result,
       };
     } catch (error) {
-
       if (error instanceof HttpException) {
         throw error;
       }
@@ -349,7 +339,6 @@ export class OrganizationsService {
     return this.updateArchiveStatus(id, true);
   }
 
-
   async findArchivedOrganizations(query: {
     page?: number;
     limit?: number;
@@ -361,7 +350,7 @@ export class OrganizationsService {
 
     const where = {
       ...this.buildOrganizationSearchFilter(searchFilter),
-      isArchived: true, 
+      isArchived: true,
     };
 
     try {
@@ -393,7 +382,6 @@ export class OrganizationsService {
     return this.updateArchiveStatus(id, false);
   }
 
-
   private buildOrganizationSearchFilter(
     searchFilter?: string,
   ): Prisma.OrganizationChildWhereInput {
@@ -422,7 +410,6 @@ export class OrganizationsService {
       organizationParents: true,
       events: {
         include: {
-          registrations: true,
           TicketCategories: true,
         },
       },
@@ -432,28 +419,29 @@ export class OrganizationsService {
   private async updateArchiveStatus(id: string, isArchived: boolean) {
     await this.findOneById(id);
 
-  try {
-    const updatedOrganization = await this.prisma.organizationChild.update({
-      where: { id },
-      data: { isArchived },
-    });
+    try {
+      const updatedOrganization = await this.prisma.organizationChild.update({
+        where: { id },
+        data: { isArchived },
+      });
 
-    const action = isArchived ? this.ARCHIVE_ACTIONS.ARCHIVED : this.ARCHIVE_ACTIONS.UNARCHIVED;
+      const action = isArchived
+        ? this.ARCHIVE_ACTIONS.ARCHIVED
+        : this.ARCHIVE_ACTIONS.UNARCHIVED;
 
-    return {
-      message: `Organization ${action} successfully`,
-      data: updatedOrganization,
-      statusCode: HttpStatus.OK,
-    };
-  } catch (error) {
-
-    const action = isArchived ? this.ARCHIVE_ACTIONS.ARCHIVE : this.ARCHIVE_ACTIONS.UNARCHIVE;
-    throw new HttpException(
-      `Failed to ${action} organization`,
-      HttpStatus.INTERNAL_SERVER_ERROR,
-    );
+      return {
+        message: `Organization ${action} successfully`,
+        data: updatedOrganization,
+        statusCode: HttpStatus.OK,
+      };
+    } catch (error) {
+      const action = isArchived
+        ? this.ARCHIVE_ACTIONS.ARCHIVE
+        : this.ARCHIVE_ACTIONS.UNARCHIVE;
+      throw new HttpException(
+        `Failed to ${action} organization`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }
-}
-
-

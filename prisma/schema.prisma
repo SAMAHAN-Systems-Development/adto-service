@@ -60,17 +60,12 @@ model OrganizationChild {
   organizationParents OrganizationGroup[]
 }
 
-model Course {
-  id     String   @id @default(cuid())
-  name   String
-  booker Booker[]
-}
+
 
 model User {
   id             String             @id @default(cuid())
   email          String             @unique
   password       String
-  booker         Booker?
   bookerId       String?
   organization   OrganizationChild?
   organizationId String?
@@ -80,39 +75,19 @@ model User {
   updatedAt      DateTime           @updatedAt
 }
 
-model Booker {
-  id            String         @id @default(uuid())
-  contactNumber String
-  validId       String?
-  courseId      String
-  course        Course         @relation(fields: [courseId], references: [id])
-  isAlumni      Boolean // If Alumni => render Batch Field else render YTG field (save in batch field)
-  batch         Int? // create util func for current students ((YTG) => YTG - CurrentDate())
-  userId        String?        @unique
-  user          User?          @relation(fields: [userId], references: [id])
-  registrations Registration[]
-}
 
-model Payment {
-  id             String       @id @default(cuid())
-  amount         Float
-  currency       String
-  paymentDate    DateTime     @default(now())
-  registrationId String       @unique
-  registration   Registration @relation(fields: [registrationId], references: [id])
-}
 
 model Registration {
   id               String      @id @default(cuid())
-  bookerId         String
-  eventId          String
+  fullName         String   
+  email            String   
+  yearLevel        String   
+  course           String   
+  cluster          String   
   confirmedAt      DateTime?
   isAttended       Boolean     @default(false)
   ticketCategoryId String
   ticketCategory   TicketCategory @relation(fields: [ticketCategoryId], references: [id])
-  booker           Booker      @relation(fields: [bookerId], references: [id])
-  event            Event       @relation(fields: [eventId], references: [id])
-  payment          Payment?
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 }
@@ -145,7 +120,6 @@ model Event {
   orgId                  String
   org                    OrganizationChild    @relation(fields: [orgId], references: [id])
   portalRequests         PortalRequests[]
-  registrations          Registration[]
   TicketCategories       TicketCategory[]
   eventAnnouncements     EventAnnouncements[]
   createdAt              DateTime             @default(now())

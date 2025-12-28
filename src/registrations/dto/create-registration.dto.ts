@@ -1,30 +1,27 @@
-import { IsEmail, IsNotEmpty, IsString, Matches } from 'class-validator';
+import { IsString, IsEmail, IsNotEmpty } from 'class-validator';
 
 export class CreateRegistrationDto {
-  @IsNotEmpty()
   @IsString()
+  @IsNotEmpty()
   fullName: string;
 
-  @IsNotEmpty()
   @IsEmail()
-  @Matches(/@addu\.edu\.ph$/, {
-    message: 'Email must be an @addu.edu.ph address',
-  })
-  schoolEmail: string;
-
   @IsNotEmpty()
-  @IsString()
-  clusterId: string;
+  email: string;
 
-  @IsNotEmpty()
   @IsString()
+  @IsNotEmpty()
   yearLevel: string;
 
-  @IsNotEmpty()
   @IsString()
-  eventId: string;
+  @IsNotEmpty()
+  course: string;
 
-  @IsNotEmpty()
   @IsString()
+  @IsNotEmpty()
+  cluster: string;
+
+  @IsString()
+  @IsNotEmpty()
   ticketCategoryId: string;
 }

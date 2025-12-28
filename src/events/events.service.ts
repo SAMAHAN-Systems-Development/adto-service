@@ -228,11 +228,7 @@ export class EventsService {
         },
         include: {
           org: true,
-          registrations: {
-            include: {
-              payment: true,
-            },
-          },
+
           TicketCategories: true,
         },
       });
