@@ -77,6 +77,7 @@ export class RegistrationsService {
         throw error;
       }
 
+      console.error('Registration creation error:', error);
       throw new HttpException(
         'Failed to create registration',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -149,7 +150,7 @@ export class RegistrationsService {
 
   async update(id: string, updateRegistrationDto: UpdateRegistrationDto) {
     try {
-      this.findOne(id);
+      await this.findOne(id);
       const updatedRegistration = await this.prisma.registration.update({
         where: { id },
         data: updateRegistrationDto,
