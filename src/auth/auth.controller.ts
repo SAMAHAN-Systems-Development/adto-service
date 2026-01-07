@@ -25,31 +25,38 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('login')
   @UsePipes(new ValidationPipe({ whitelist: true }))
-  async signIn(@Body() loginDto: UserLoginDto, @Res() res) {
+  async signIn(
+    @Body() loginDto: UserLoginDto,
+    @Res({ passthrough: true }) res,
+  ) {
     const { access_token } = await this.authService.loginUser(loginDto);
 
     if (!access_token) {
-      return res.status(HttpStatus.UNAUTHORIZED).send({
-        message: 'Invalid credentials',
-      });
+      res.status(HttpStatus.UNAUTHORIZED);
+      return { message: 'Invalid credentials' };
     }
 
     res.cookie('token', access_token, {
       httpOnly: true,
       secure: true,
-      sameSite: 'strict',
+      sameSite: 'none',
       path: '/',
     });
 
-    return res.send({ message: 'Login successful', auth_token: access_token });
+    return { message: 'Login successful', auth_token: access_token };
   }
 
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('logout')
-  async signOut(@Res() res) {
-    res.clearCookie('token');
-    return res.send({ message: 'Logout successful' });
+  async signOut(@Res({ passthrough: true }) res) {
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      path: '/',
+    });
+    return { message: 'Logout successful' };
   }
 
   @UseGuards(AuthGuard)
