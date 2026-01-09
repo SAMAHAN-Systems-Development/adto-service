@@ -9,8 +9,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DB_URL")
+  provider  = "postgresql"
+  url       = env("DB_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -24,6 +24,13 @@ enum AnnouncementType {
   INFO
   WARNING
   CANCELLED
+}
+
+enum AssetType {
+  EVENT_THUMBNAIL
+  EVENT_BANNER
+  TICKET_THUMBNAIL
+  TICKET_BACKGROUND
 }
 
 model OrganizationParent {
@@ -60,8 +67,6 @@ model OrganizationChild {
   organizationParents OrganizationGroup[]
 }
 
-
-
 model User {
   id             String             @id @default(cuid())
   email          String             @unique
@@ -75,21 +80,19 @@ model User {
   updatedAt      DateTime           @updatedAt
 }
 
-
-
 model Registration {
-  id               String      @id @default(cuid())
-  fullName         String   
-  email            String   
-  yearLevel        String   
-  course           String   
-  cluster          String   
+  id               String         @id @default(cuid())
+  fullName         String
+  email            String
+  yearLevel        String
+  course           String
+  cluster          String
   confirmedAt      DateTime?
-  isAttended       Boolean     @default(false)
+  isAttended       Boolean        @default(false)
   ticketCategoryId String
   ticketCategory   TicketCategory @relation(fields: [ticketCategoryId], references: [id])
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 }
 
 model TicketCategory {
@@ -102,6 +105,7 @@ model TicketCategory {
   eventId              String
   event                Event          @relation(fields: [eventId], references: [id])
   registrations        Registration[]
+  eventAssets          EventAssets[]
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
 }
@@ -122,9 +126,11 @@ model Event {
   portalRequests         PortalRequests[]
   TicketCategories       TicketCategory[]
   eventAnnouncements     EventAnnouncements[]
-  createdAt              DateTime             @default(now())
-  updatedAt              DateTime             @updatedAt
-  deletedAt              DateTime?
+  assets                 EventAssets[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 }
 
 model EventAnnouncements {
@@ -138,12 +144,27 @@ model EventAnnouncements {
   updatedAt        DateTime         @updatedAt
 }
 
+model EventAssets {
+  id               String          @id @default(uuid())
+  event            Event           @relation(fields: [eventId], references: [id])
+  eventId          String
+  ticketCategory   TicketCategory? @relation(fields: [ticketCategoryId], references: [id])
+  ticketCategoryId String?
+  assetType        AssetType
+  imageUrl         String
+  mimeType         String
+  fileSize         Int
+  uploadedAt       DateTime        @default(now())
+
+  @@unique([eventId, assetType])
+}
+
 model PortalRequests {
-  id String @id @default(cuid())
-  eventId String
-  event Event @relation(fields: [eventId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  isApproved Boolean @default(false)
+  id         String   @id @default(cuid())
+  eventId    String
+  event      Event    @relation(fields: [eventId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  isApproved Boolean  @default(false)
   portalLink String?
 }

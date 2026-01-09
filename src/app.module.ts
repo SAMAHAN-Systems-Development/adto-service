@@ -11,6 +11,8 @@ import { EventAnnouncementsModule } from './event-announcements/event-announceme
 import { EventTicketsModule } from './event-tickets/event-tickets.module';
 
 import { RegistrationsModule } from './registrations/registrations.module';
+import { AssetsModule } from './assets/assets.module';
+import { S3Module } from './s3/s3.module';
 
 @Module({
   imports: [
@@ -23,6 +25,8 @@ import { RegistrationsModule } from './registrations/registrations.module';
     EventAnnouncementsModule,
     EventTicketsModule,
     RegistrationsModule,
+    AssetsModule,
+    S3Module,
   ],
   controllers: [AppController],
   providers: [AppService],
