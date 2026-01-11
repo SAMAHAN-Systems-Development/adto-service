@@ -1,4 +1,10 @@
-import { IsString, IsEmail, IsNotEmpty } from 'class-validator';
+import {
+  IsString,
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsBoolean,
+} from 'class-validator';
 
 export class CreateRegistrationDto {
   @IsString()
@@ -24,4 +30,8 @@ export class CreateRegistrationDto {
   @IsString()
   @IsNotEmpty()
   ticketCategoryId: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isAttended?: boolean;
 }
