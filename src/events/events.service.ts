@@ -125,8 +125,25 @@ export class EventsService {
 
     const totalCount = await this.prisma.event.count({ where });
 
+    const eventsWithRegistrants = await Promise.all(
+      events.map(async (event) => {
+        const registrantCount = await this.prisma.registration.count({
+          where: {
+            ticketCategory: {
+              eventId: event.id,
+            },
+          },
+        });
+
+        return {
+          ...event,
+          totalRegistrants: registrantCount,
+        };
+      }),
+    );
+
     return {
-      data: events,
+      data: eventsWithRegistrants,
       meta: {
         totalCount,
         totalPages: Math.ceil(totalCount / limit),

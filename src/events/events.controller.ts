@@ -14,13 +14,16 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { Public } from 'src/auth/public.decorator';
+import { Roles } from 'src/auth/roles.decorator';
+import { UserType } from '@prisma/client';
 
 @Controller('events')
+@UseGuards(AuthGuard)
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
   @Post()
-  @UseGuards(AuthGuard)
+  @Roles(UserType.ADMIN, UserType.ORGANIZATION)
   create(@Body() createEventDto: CreateEventDto, @Req() req: any) {
     return this.eventsService.create(createEventDto, req.user.orgId);
   }
@@ -54,6 +57,7 @@ export class EventsController {
   }
 
   @Get('/organization/:id')
+  @Roles(UserType.ADMIN, UserType.ORGANIZATION)
   async findAllByOrganizationChild(
     @Param('id') id: string,
     @Query('page') page?: number,
@@ -78,16 +82,19 @@ export class EventsController {
   }
 
   @Patch('/:id/publish')
+  @Roles(UserType.ADMIN, UserType.ORGANIZATION)
   publish(@Param('id') id: string) {
     return this.eventsService.publishEvent(id);
   }
 
   @Patch('/:id/soft-delete')
+  @Roles(UserType.ADMIN, UserType.ORGANIZATION)
   softDelete(@Param('id') id: string) {
     return this.eventsService.softDelete(id);
   }
 
   @Patch('/:id/archive')
+  @Roles(UserType.ADMIN, UserType.ORGANIZATION)
   archive(@Param('id') id: string) {
     return this.eventsService.archive(id);
   }
@@ -99,6 +106,7 @@ export class EventsController {
   }
 
   @Patch(':id')
+  @Roles(UserType.ADMIN, UserType.ORGANIZATION)
   update(@Param('id') id: string, @Body() updateEventDto: UpdateEventDto) {
     return this.eventsService.update(id, updateEventDto);
   }
