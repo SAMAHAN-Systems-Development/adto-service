@@ -28,9 +28,10 @@ export class EventsController {
     return this.eventsService.create(createEventDto, req.user.orgId);
   }
 
-  @Public()
   @Get('/published')
+  @Roles(UserType.ADMIN, UserType.ORGANIZATION)
   async findAllPublished(
+    @Req() req: any,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('isRegistrationOpen') isRegistrationOpen?: boolean,
@@ -42,7 +43,8 @@ export class EventsController {
     @Query('orderBy') orderBy?: 'asc' | 'desc',
     @Query('price') price?: 'free' | 'paid' | 'all',
   ) {
-    return this.eventsService.findAll({
+    const { role, orgId } = req.user;
+    return this.eventsService.findAll(role, orgId, {
       page: Number(page) || 1,
       limit: Number(limit) || 12,
       isRegistrationOpen: isRegistrationOpen || undefined,
@@ -51,31 +53,6 @@ export class EventsController {
       searchFilter: searchFilter || undefined,
       organizationId: organizationId || undefined,
       organizationParentId: organizationParentId || undefined,
-      orderBy: orderBy || 'asc',
-      price: price || undefined,
-    });
-  }
-
-  @Get('/organization/:id')
-  @Roles(UserType.ADMIN, UserType.ORGANIZATION)
-  async findAllByOrganizationChild(
-    @Param('id') id: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-    @Query('isRegistrationOpen') isRegistrationOpen?: boolean,
-    @Query('isRegistrationRequired') isRegistrationRequired?: boolean,
-    @Query('isOpenToOutsiders') isOpenToOutsiders?: boolean,
-    @Query('searchFilter') searchFilter?: string,
-    @Query('orderBy') orderBy?: 'asc' | 'desc',
-    @Query('price') price?: 'free' | 'paid' | 'all',
-  ) {
-    return this.eventsService.findAllByOrganizationChild(id, {
-      page: Number(page) || 1,
-      limit: Number(limit) || 10,
-      isRegistrationOpen: isRegistrationOpen || undefined,
-      isRegistrationRequired: isRegistrationRequired || undefined,
-      isOpenToOutsiders: isOpenToOutsiders || undefined,
-      searchFilter: searchFilter || undefined,
       orderBy: orderBy || 'asc',
       price: price || undefined,
     });
