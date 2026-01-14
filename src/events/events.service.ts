@@ -8,6 +8,7 @@ import {
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { UserType } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -41,18 +42,22 @@ export class EventsService {
     };
   }
 
-  async findAll(query: {
-    page?: number;
-    limit?: number;
-    isRegistrationOpen?: boolean;
-    isRegistrationRequired?: boolean;
-    isOpenToOutsiders?: boolean;
-    searchFilter?: string;
-    organizationId?: string;
-    organizationParentId?: string;
-    orderBy?: 'asc' | 'desc';
-    price?: 'free' | 'paid' | 'all';
-  }) {
+  async findAll(
+    role: UserType,
+    orgId: string,
+    query: {
+      page?: number;
+      limit?: number;
+      isRegistrationOpen?: boolean;
+      isRegistrationRequired?: boolean;
+      isOpenToOutsiders?: boolean;
+      searchFilter?: string;
+      organizationId?: string;
+      organizationParentId?: string;
+      orderBy?: 'asc' | 'desc';
+      price?: 'free' | 'paid' | 'all';
+    },
+  ) {
     const {
       page = 1,
       limit = 10,
@@ -68,11 +73,13 @@ export class EventsService {
 
     const skip = (page - 1) * limit;
 
+    const effectiveOrgId = role === 'ADMIN' ? organizationId : orgId;
+
     const where: Prisma.EventWhereInput = {
       ...(isRegistrationOpen && { isRegistrationOpen }),
       ...(isRegistrationRequired && { isRegistrationRequired }),
       ...(isOpenToOutsiders && { isOpenToOutsiders }),
-      ...(organizationId && { orgId: organizationId }),
+      ...(effectiveOrgId && { orgId: effectiveOrgId }),
       ...(organizationParentId && {
         org: {
           organizationParents: {
@@ -114,7 +121,7 @@ export class EventsService {
     const events = await this.prisma.event.findMany({
       where,
       skip,
-      take: limit,
+      take: Number(limit),
       orderBy: {
         dateStart: orderBy,
       },
@@ -127,7 +134,7 @@ export class EventsService {
             updatedAt: true,
           },
           orderBy: { updatedAt: 'desc' },
-        }
+        },
       },
     });
 
@@ -161,98 +168,6 @@ export class EventsService {
     };
   }
 
-  async findAllByOrganizationChild(
-    orgId: string,
-    query: {
-      page?: number;
-      limit?: number;
-      isRegistrationOpen?: boolean;
-      isRegistrationRequired?: boolean;
-      isOpenToOutsiders?: boolean;
-      searchFilter?: string;
-      orderBy?: 'asc' | 'desc';
-      price?: 'free' | 'paid' | 'all';
-    },
-  ) {
-    const {
-      page = 1,
-      limit = 10,
-      isRegistrationOpen,
-      isRegistrationRequired,
-      isOpenToOutsiders,
-      searchFilter,
-      orderBy = 'asc',
-      price,
-    } = query;
-
-    const skip = (page - 1) * limit;
-
-    const where: Prisma.EventWhereInput = {
-      ...(isRegistrationOpen && { isRegistrationOpen }),
-      ...(isRegistrationRequired && { isRegistrationRequired }),
-      ...(isOpenToOutsiders && { isOpenToOutsiders }),
-      ...(searchFilter && {
-        OR: [
-          { name: { contains: searchFilter, mode: 'insensitive' } },
-          { description: { contains: searchFilter, mode: 'insensitive' } },
-          { org: { name: { contains: searchFilter, mode: 'insensitive' } } },
-          { org: { acronym: { contains: searchFilter, mode: 'insensitive' } } },
-        ],
-      }),
-      ...(price &&
-        price !== 'all' && {
-          TicketCategories: {
-            ...(price === 'free' && {
-              some: {
-                price: 0,
-              },
-            }),
-            ...(price === 'paid' && {
-              some: {
-                price: {
-                  gt: 0,
-                },
-              },
-            }),
-          },
-        }),
-      deletedAt: null,
-      orgId,
-    };
-
-    const events = await this.prisma.event.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: {
-        dateStart: orderBy,
-      },
-      include: {
-        org: true,
-        eventAnnouncements: {
-          select: {
-            title: true,
-            content: true,
-            updatedAt: true,
-          },
-          orderBy: { updatedAt: 'desc' },
-        }
-      },
-    });
-
-    const totalCount = await this.prisma.event.count({ where });
-
-    return {
-      data: events,
-      meta: {
-        totalCount,
-        totalPages: Math.ceil(totalCount / limit),
-        currentPage: page,
-        limit,
-      },
-    };
-  }
-
   async findOne(id: string) {
     try {
       const event = await this.prisma.event.findUnique({
@@ -261,7 +176,7 @@ export class EventsService {
         },
         include: {
           org: true,
-          
+
           TicketCategories: true,
           eventAnnouncements: {
             select: {
@@ -270,7 +185,7 @@ export class EventsService {
               updatedAt: true,
             },
             orderBy: { updatedAt: 'desc' },
-          }
+          },
         },
       });
 
