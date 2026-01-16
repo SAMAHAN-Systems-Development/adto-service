@@ -133,19 +133,8 @@ export class EventsService {
 
     const totalCount = await this.prisma.event.count({ where });
 
-    // rename eventAnnouncements to announcements and remove eventAnnouncements
-    const formattedEvents = events.map(event => ({
-      ...event,
-      eventAnnouncements: undefined,
-      announcements: event.eventAnnouncements.map(announcement => ({
-        title: announcement.title,
-        content: announcement.content,
-        updatedAt: announcement.updatedAt,
-      })),
-    }));
-
     return {
-      data: formattedEvents,
+      data: events,
       meta: {
         totalCount,
         totalPages: Math.ceil(totalCount / limit),
@@ -235,20 +224,9 @@ export class EventsService {
     });
 
     const totalCount = await this.prisma.event.count({ where });
-    
-     // rename eventAnnouncements to announcements and remove eventAnnouncements
-    const formattedEvents = events.map(event => ({
-      ...event,
-      eventAnnouncements: undefined,
-      announcements: event.eventAnnouncements.map(announcement => ({
-        title: announcement.title,
-        content: announcement.content,
-        updatedAt: announcement.updatedAt,
-      })),
-    }));
 
     return {
-      data: formattedEvents,
+      data: events,
       meta: {
         totalCount,
         totalPages: Math.ceil(totalCount / limit),
@@ -279,18 +257,7 @@ export class EventsService {
         },
       });
 
-      // rename eventAnnouncements to announcements and remove eventAnnouncements
-      const formattedEvent = {
-        ...event,
-        eventAnnouncements: undefined,
-        announcements: event.eventAnnouncements.map(announcement => ({
-          title: announcement.title,
-          content: announcement.content,
-          updatedAt: announcement.updatedAt,
-        })),
-      }
-
-      return formattedEvent;
+      return event;
     } catch (error) {
       throw new HttpException('Event not found', HttpStatus.NOT_FOUND);
     }
