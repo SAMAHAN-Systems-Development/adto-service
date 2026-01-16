@@ -126,7 +126,7 @@ export class EventsService {
             content: true,
             updatedAt: true,
           },
-          orderBy: { updatedAt: 'desc'},
+          orderBy: { updatedAt: 'desc' },
         }
       },
     });
@@ -218,7 +218,7 @@ export class EventsService {
             content: true,
             updatedAt: true,
           },
-          orderBy: { updatedAt: 'desc'},
+          orderBy: { updatedAt: 'desc' },
         }
       },
     });
@@ -252,7 +252,7 @@ export class EventsService {
               content: true,
               updatedAt: true,
             },
-            orderBy: { updatedAt: 'desc'},
+            orderBy: { updatedAt: 'desc' },
           }
         },
       });
