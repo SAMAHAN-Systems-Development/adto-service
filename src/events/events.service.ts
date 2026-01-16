@@ -125,7 +125,6 @@ export class EventsService {
             title: true,
             content: true,
             updatedAt: true,
-            announcementType: true,
           },
           orderBy: { updatedAt: 'desc'},
         }
@@ -229,7 +228,6 @@ export class EventsService {
             title: true,
             content: true,
             updatedAt: true,
-            announcementType: true,
           },
           orderBy: { updatedAt: 'desc'},
         }
@@ -275,7 +273,6 @@ export class EventsService {
               title: true,
               content: true,
               updatedAt: true,
-              announcementType: true,
             },
             orderBy: { updatedAt: 'desc'},
           }
