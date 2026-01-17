@@ -85,20 +85,66 @@ export class RegistrationsService {
     }
   }
 
-  async findAll() {
+  async findAllByEvent(
+    eventId: string,
+    query: {
+      page?: number;
+      limit?: number;
+      searchFilter?: string;
+      orderBy?: 'asc' | 'desc';
+    },
+  ) {
+    const { page = 1, limit = 10, searchFilter, orderBy = 'desc' } = query;
+    const skip = (page - 1) * limit;
+
     try {
-      const registrations = await this.prisma.registration.findMany({
-        include: {
-          ticketCategory: {
-            include: { event: true },
-          },
+      const where = {
+        ticketCategory: {
+          eventId: eventId, // Filter by event ID instead of org ID
         },
-        orderBy: { createdAt: 'desc' },
-      });
+        ...(searchFilter && {
+          OR: [
+            {
+              fullName: {
+                contains: searchFilter,
+                mode: 'insensitive' as const,
+              },
+            },
+            { email: { contains: searchFilter, mode: 'insensitive' as const } },
+          ],
+        }),
+      };
+
+      const [registrations, totalCount] = await Promise.all([
+        this.prisma.registration.findMany({
+          where,
+          skip,
+          take: limit,
+          include: {
+            ticketCategory: {
+              include: {
+                event: {
+                  include: {
+                    org: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: { createdAt: orderBy },
+        }),
+        this.prisma.registration.count({ where }),
+      ]);
 
       return {
         message: 'Registrations fetched successfully',
         data: registrations,
+        meta: {
+          totalCount,
+          totalPages: Math.ceil(totalCount / limit),
+          currentPage: page,
+          limit,
+        },
         statusCode: HttpStatus.OK,
       };
     } catch (error) {

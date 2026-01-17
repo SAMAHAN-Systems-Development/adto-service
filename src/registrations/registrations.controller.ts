@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { RegistrationsService } from './registrations.service';
 import { CreateRegistrationDto } from './dto/create-registration.dto';
@@ -26,10 +27,21 @@ export class RegistrationsController {
     return this.registrationsService.create(createRegistrationDto);
   }
 
-  @Get()
+  @Get('event/:eventId')
   @Roles(UserType.ADMIN, UserType.ORGANIZATION)
-  findAll() {
-    return this.registrationsService.findAll();
+  findAllByEvent(
+    @Param('eventId') eventId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('searchFilter') searchFilter?: string,
+    @Query('orderBy') orderBy?: 'asc' | 'desc',
+  ) {
+    return this.registrationsService.findAllByEvent(eventId, {
+      page: Number(page) || 1,
+      limit: Number(limit) || 10,
+      searchFilter: searchFilter || undefined,
+      orderBy: orderBy || 'desc',
+    });
   }
 
   @Get(':id')
