@@ -128,6 +128,7 @@ export class EventsService {
       },
       include: {
         org: true,
+        TicketCategories: true,
       },
     });
 
