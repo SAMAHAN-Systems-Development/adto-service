@@ -43,8 +43,8 @@ export class EventsService {
   }
 
   async findAll(
-    role: UserType,
-    orgId: string,
+    role: UserType | null,
+    orgId: string | null,
     query: {
       page?: number;
       limit?: number;
@@ -73,7 +73,8 @@ export class EventsService {
 
     const skip = (page - 1) * limit;
 
-    const effectiveOrgId = role === 'ADMIN' ? organizationId : orgId;
+    const effectiveOrgId =
+      role === UserType.ORGANIZATION && orgId ? orgId : organizationId;
 
     const where: Prisma.EventWhereInput = {
       ...(isRegistrationOpen && { isRegistrationOpen }),

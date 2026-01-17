@@ -28,6 +28,34 @@ export class EventsController {
     return this.eventsService.create(createEventDto, req.user.orgId);
   }
 
+  @Public()
+  @Get('/public')
+  async findAllPublic(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('isRegistrationOpen') isRegistrationOpen?: boolean,
+    @Query('isRegistrationRequired') isRegistrationRequired?: boolean,
+    @Query('isOpenToOutsiders') isOpenToOutsiders?: boolean,
+    @Query('organizationId') organizationId?: string,
+    @Query('organizationParentId') organizationParentId?: string,
+    @Query('searchFilter') searchFilter?: string,
+    @Query('orderBy') orderBy?: 'asc' | 'desc',
+    @Query('price') price?: 'free' | 'paid' | 'all',
+  ) {
+    return this.eventsService.findAll(null, null, {
+      page: Number(page) || 1,
+      limit: Number(limit) || 12,
+      isRegistrationOpen: isRegistrationOpen || undefined,
+      isRegistrationRequired: isRegistrationRequired || undefined,
+      isOpenToOutsiders: isOpenToOutsiders || undefined,
+      searchFilter: searchFilter || undefined,
+      organizationId: organizationId || undefined,
+      organizationParentId: organizationParentId || undefined,
+      orderBy: orderBy || 'asc',
+      price: price || undefined,
+    });
+  }
+
   @Get('/published')
   @Roles(UserType.ADMIN, UserType.ORGANIZATION)
   async findAllPublished(
