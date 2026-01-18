@@ -58,6 +58,8 @@ model OrganizationChild {
   user                User?               @relation(fields: [userId], references: [id])
   events              Event[]
   organizationParents OrganizationGroup[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 }
 
 
