@@ -1,4 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateOrganizationParentDto } from './dto/create-organization-parent.dto';
 import { UpdateOrganizationParentDto } from './dto/update-organization-parent.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -6,8 +11,22 @@ import { PrismaService } from 'src/prisma/prisma.service';
 @Injectable()
 export class OrganizationParentsService {
   constructor(private readonly prisma: PrismaService) {}
-  create(createOrganizationParentDto: CreateOrganizationParentDto) {
-    return 'This action adds a new organizationParent';
+
+  async create(createOrganizationParentDto: CreateOrganizationParentDto) {
+    try {
+      const createOrgParent = await this.prisma.organizationParent.create({
+        data: {
+          ...createOrganizationParentDto,
+        },
+      });
+
+      return {
+        message: 'Organization parent created successfully',
+        data: createOrgParent,
+      };
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
+    }
   }
 
   async findAll() {
@@ -22,15 +41,70 @@ export class OrganizationParentsService {
     return organizationParents;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} organizationParent`;
+  async findOne(id: string) {
+    try {
+      const organizationParent =
+        await this.prisma.organizationParent.findUnique({
+          where: { id },
+        });
+
+      return organizationParent;
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
+    }
   }
 
-  update(id: number, updateOrganizationParentDto: UpdateOrganizationParentDto) {
-    return `This action updates a #${id} organizationParent`;
+  async update(
+    id: string,
+    updateOrganizationParentDto: UpdateOrganizationParentDto,
+  ) {
+    try {
+      const updatedOrgParent = await this.prisma.organizationParent.update({
+        where: { id },
+        data: {
+          ...updateOrganizationParentDto,
+        },
+      });
+
+      return {
+        message: 'Organization parent updated successfully',
+        data: updatedOrgParent,
+      };
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
+    }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} organizationParent`;
+  async remove(id: string) {
+    try {
+      const orgParent = await this.prisma.organizationParent.findUnique({
+        where: { id },
+        include: { organizationChildren: true },
+      });
+
+      if (!orgParent) {
+        throw new NotFoundException('Organization parent not found');
+      }
+
+      if (
+        orgParent.organizationChildren &&
+        orgParent.organizationChildren.length > 0
+      ) {
+        throw new ConflictException(
+          'Cannot delete organization parent with existing organization children',
+        );
+      }
+
+      await this.prisma.organizationParent.delete({ where: { id } });
+      return { message: 'Organization parent deleted successfully' };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(error.message);
+    }
   }
 }

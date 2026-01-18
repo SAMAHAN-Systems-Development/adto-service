@@ -31,7 +31,7 @@ export class OrganizationParentsController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.organizationParentsService.findOne(+id);
+    return this.organizationParentsService.findOne(id);
   }
 
   @Patch(':id')
@@ -40,13 +40,13 @@ export class OrganizationParentsController {
     @Body() updateOrganizationParentDto: UpdateOrganizationParentDto,
   ) {
     return this.organizationParentsService.update(
-      +id,
+      id,
       updateOrganizationParentDto,
     );
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.organizationParentsService.remove(+id);
+    return this.organizationParentsService.remove(id);
   }
 }
