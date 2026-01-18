@@ -7,7 +7,7 @@ async function main() {
   console.log(`Start seeding ...`);
 
   // --- Clear existing data ---
-  await prisma.portalRequests.deleteMany(); // Added missing cleanup
+  await prisma.portalRequests.deleteMany();
   await prisma.registration.deleteMany();
   await prisma.ticketCategory.deleteMany();
   await prisma.eventAnnouncements.deleteMany();
@@ -74,6 +74,10 @@ async function main() {
       acronym: 'SCB',
       description: 'The highest governing body of the student government.',
       email: 'samahan@addu.edu.ph',
+      facebook: 'https://facebook.com/samahanaddu',
+      instagram: 'https://instagram.com/samahanaddu',
+      twitter: 'https://twitter.com/samahanaddu',
+      linkedin: 'https://linkedin.com/company/samahan-addu',
     },
     {
       parentId: 'parent_samahan',
@@ -81,6 +85,10 @@ async function main() {
       acronym: 'SSD',
       description: 'The technological arm of the SAMAHAN.',
       email: 'ssd@addu.edu.ph',
+      facebook: 'https://facebook.com/ssd.addu',
+      instagram: 'https://instagram.com/ssd.addu',
+      twitter: 'https://twitter.com/ssd_addu',
+      linkedin: 'https://linkedin.com/company/ssd-addu',
     },
     {
       parentId: 'parent_samahan',
@@ -88,8 +96,12 @@ async function main() {
       acronym: 'SCT',
       description: 'The creative design arm of the SAMAHAN.',
       email: 'sct@addu.edu.ph',
+      facebook: 'https://facebook.com/sct.addu',
+      instagram: 'https://instagram.com/sct.addu',
+      twitter: 'https://twitter.com/sct_addu',
+      linkedin: 'https://linkedin.com/company/sct-addu',
     },
-    
+
     // CS
     {
       parentId: 'parent_cs',
@@ -97,6 +109,10 @@ async function main() {
       acronym: 'CSSEC',
       description: 'Governing body of the Computer Studies cluster.',
       email: 'cssec@addu.edu.ph',
+      facebook: 'https://facebook.com/cssec.addu',
+      instagram: 'https://instagram.com/cssec.addu',
+      twitter: 'https://twitter.com/cssec_addu',
+      linkedin: 'https://linkedin.com/company/cssec-addu',
     },
     {
       parentId: 'parent_cs',
@@ -104,6 +120,10 @@ async function main() {
       acronym: 'GDSC',
       description: 'University chapter of Google Developer Student Clubs.',
       email: 'gdsc@addu.edu.ph',
+      facebook: 'https://facebook.com/gdsc.addu',
+      instagram: 'https://instagram.com/gdsc.addu',
+      twitter: 'https://twitter.com/gdsc_addu',
+      linkedin: 'https://linkedin.com/company/gdsc-addu',
     },
 
     // BM
@@ -113,6 +133,10 @@ async function main() {
       acronym: 'BMSEC',
       description: 'Governing body of the Business & Management cluster.',
       email: 'bmsec@addu.edu.ph',
+      facebook: 'https://facebook.com/bmsec.addu',
+      instagram: 'https://instagram.com/bmsec.addu',
+      twitter: 'https://twitter.com/bmsec_addu',
+      linkedin: 'https://linkedin.com/company/bmsec-addu',
     },
     {
       parentId: 'parent_bm',
@@ -120,6 +144,10 @@ async function main() {
       acronym: 'ASMS',
       description: 'Organization for management students.',
       email: 'asms@addu.edu.ph',
+      facebook: 'https://facebook.com/asms.addu',
+      instagram: 'https://instagram.com/asms.addu',
+      twitter: 'https://twitter.com/asms_addu',
+      linkedin: 'https://linkedin.com/company/asms-addu',
     },
 
     // SEA
@@ -127,8 +155,13 @@ async function main() {
       parentId: 'parent_sea',
       name: 'SEA Student Executive Council',
       acronym: 'SEASEC',
-      description: 'Governing body of the School of Engineering and Architecture.',
+      description:
+        'Governing body of the School of Engineering and Architecture.',
       email: 'seasec@addu.edu.ph',
+      facebook: 'https://facebook.com/seasec.addu',
+      instagram: 'https://instagram.com/seasec.addu',
+      twitter: 'https://twitter.com/seasec_addu',
+      linkedin: 'https://linkedin.com/company/seasec-addu',
     },
     {
       parentId: 'parent_sea',
@@ -136,6 +169,10 @@ async function main() {
       acronym: 'ACES',
       description: 'Organization for civil engineering students.',
       email: 'aces@addu.edu.ph',
+      facebook: 'https://facebook.com/aces.addu',
+      instagram: 'https://instagram.com/aces.addu',
+      twitter: 'https://twitter.com/aces_addu',
+      linkedin: 'https://linkedin.com/company/aces-addu',
     },
     {
       parentId: 'parent_sea',
@@ -143,6 +180,10 @@ async function main() {
       acronym: 'AECES',
       description: 'Organization for ECE and CoE students.',
       email: 'aeces@addu.edu.ph',
+      facebook: 'https://facebook.com/aeces.addu',
+      instagram: 'https://instagram.com/aeces.addu',
+      twitter: 'https://twitter.com/aeces_addu',
+      linkedin: 'https://linkedin.com/company/aeces-addu',
     },
 
     // Nursing
@@ -152,6 +193,10 @@ async function main() {
       acronym: 'SONSEC',
       description: 'Governing body of the School of Nursing.',
       email: 'sonsec@addu.edu.ph',
+      facebook: 'https://facebook.com/sonsec.addu',
+      instagram: 'https://instagram.com/sonsec.addu',
+      twitter: 'https://twitter.com/sonsec_addu',
+      linkedin: 'https://linkedin.com/company/sonsec-addu',
     },
 
     // Accountancy
@@ -161,6 +206,10 @@ async function main() {
       acronym: 'JPIA',
       description: 'Organization for accountancy students.',
       email: 'jpia@addu.edu.ph',
+      facebook: 'https://facebook.com/jpia.addu',
+      instagram: 'https://instagram.com/jpia.addu',
+      twitter: 'https://twitter.com/jpia_addu',
+      linkedin: 'https://linkedin.com/company/jpia-addu',
     },
 
     // Arts & Sciences
@@ -170,6 +219,10 @@ async function main() {
       acronym: 'SSSEC',
       description: 'Representing the Social Sciences cluster.',
       email: 'sssec@addu.edu.ph',
+      facebook: 'https://facebook.com/sssec.addu',
+      instagram: 'https://instagram.com/sssec.addu',
+      twitter: 'https://twitter.com/sssec_addu',
+      linkedin: 'https://linkedin.com/company/sssec-addu',
     },
     {
       parentId: 'parent_sas',
@@ -177,6 +230,10 @@ async function main() {
       acronym: 'NSMSEC',
       description: 'Representing the Natural Sciences and Math cluster.',
       email: 'nsmsec@addu.edu.ph',
+      facebook: 'https://facebook.com/nsmsec.addu',
+      instagram: 'https://instagram.com/nsmsec.addu',
+      twitter: 'https://twitter.com/nsmsec_addu',
+      linkedin: 'https://linkedin.com/company/nsmsec-addu',
     },
     {
       parentId: 'parent_sas',
@@ -184,14 +241,19 @@ async function main() {
       acronym: 'HUMLETSEC',
       description: 'Representing the Humanities and Letters cluster.',
       email: 'humletsec@addu.edu.ph',
+      facebook: 'https://facebook.com/humletsec.addu',
+      instagram: 'https://instagram.com/humletsec.addu',
+      twitter: 'https://twitter.com/humletsec_addu',
+      linkedin: 'https://linkedin.com/company/humletsec-addu',
     },
   ];
 
   const createdOrgIds: string[] = [];
+  const now = new Date();
 
   // --- Create Users & Organizations Loop ---
   console.log('Creating organizations and their users...');
-  
+
   for (const org of organizationsList) {
     const orgId = `org_${org.acronym.toLowerCase()}`;
     const userId = `user_${org.acronym.toLowerCase()}`;
@@ -204,19 +266,27 @@ async function main() {
         password: hashedPassword,
         userType: UserType.ORGANIZATION,
         isActive: true,
-        organizationId: orgId, // Redundant but kept for schema consistency
+        organizationId: orgId,
+        createdAt: now,
+        updatedAt: now,
       },
     });
 
-    // 2. Create OrganizationChild
+    // 2. Create OrganizationChild with social media links
     await prisma.organizationChild.create({
       data: {
         id: orgId,
         name: org.name,
         acronym: org.acronym,
         description: org.description,
-        userId: userId, // Link to the user we just created
+        facebook: org.facebook,
+        instagram: org.instagram,
+        twitter: org.twitter,
+        linkedin: org.linkedin,
+        userId: userId,
         isAdmin: false,
+        createdAt: now,
+        updatedAt: now,
       },
     });
 
@@ -231,25 +301,29 @@ async function main() {
     createdOrgIds.push(orgId);
   }
 
-  console.log(`Created ${createdOrgIds.length} organizations with user accounts.`);
+  console.log(
+    `Created ${createdOrgIds.length} organizations with user accounts.`,
+  );
 
   // --- Seed Extra Users (Admins & Students) ---
   const extraUsersData = [
-    // Admin
     {
       id: 'user_admin',
       email: 'admin@addu.edu.ph',
       password: hashedPassword,
       userType: UserType.ADMIN,
       isActive: true,
+      createdAt: now,
+      updatedAt: now,
     },
-    // Students
     {
       id: 'user_student_1',
       email: 'student1@addu.edu.ph',
       password: hashedPassword,
       userType: UserType.USER,
       isActive: true,
+      createdAt: now,
+      updatedAt: now,
     },
     {
       id: 'user_student_2',
@@ -257,6 +331,8 @@ async function main() {
       password: hashedPassword,
       userType: UserType.USER,
       isActive: true,
+      createdAt: now,
+      updatedAt: now,
     },
   ];
 
@@ -265,9 +341,7 @@ async function main() {
   });
   console.log(`Created ${extraUsersData.length} extra users.`);
 
-
   // --- Seed Events ---
-  // Generate 3-5 events for each organization
   const eventsData: any[] = [];
 
   const getRandomFutureDate = (startMonths = 1, endMonths = 12) => {
@@ -280,9 +354,17 @@ async function main() {
   };
 
   const eventTypes = [
-    'Conference', 'Workshop', 'Seminar', 'General Assembly', 
-    'Hackathon', 'Webinar', 'Forum', 'Social Gathering', 
-    'Networking Event', 'Exhibition', 'Culminating Night'
+    'Conference',
+    'Workshop',
+    'Seminar',
+    'General Assembly',
+    'Hackathon',
+    'Webinar',
+    'Forum',
+    'Social Gathering',
+    'Networking Event',
+    'Exhibition',
+    'Culminating Night',
   ];
 
   const eventDescriptions = [
@@ -296,13 +378,14 @@ async function main() {
   ];
 
   createdOrgIds.forEach((orgId) => {
-    // Generate 3 to 5 events
     const numEvents = Math.floor(Math.random() * 3) + 3;
 
     for (let i = 0; i < numEvents; i++) {
       const startDate = getRandomFutureDate(0, 6);
       const endDate = new Date(startDate);
-      endDate.setHours(startDate.getHours() + Math.floor(Math.random() * 8) + 2);
+      endDate.setHours(
+        startDate.getHours() + Math.floor(Math.random() * 8) + 2,
+      );
 
       const isRegistrationOpen = Math.random() > 0.3;
       const isRegistrationRequired = Math.random() > 0.1;
@@ -310,15 +393,17 @@ async function main() {
       const isOpenToOutsiders = Math.random() > 0.8;
 
       const eventId = `event_${orgId}_${i + 1}`;
-      const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
-      
-      // Look up org acronym for the name
+      const eventType =
+        eventTypes[Math.floor(Math.random() * eventTypes.length)];
       const orgAcronym = orgId.split('_')[1].toUpperCase();
 
       eventsData.push({
         id: eventId,
         name: `${orgAcronym} ${eventType} ${2026}`,
-        description: eventDescriptions[Math.floor(Math.random() * eventDescriptions.length)],
+        description:
+          eventDescriptions[
+            Math.floor(Math.random() * eventDescriptions.length)
+          ],
         dateStart: startDate,
         dateEnd: endDate,
         orgId: orgId,
@@ -326,6 +411,8 @@ async function main() {
         isRegistrationOpen: isRegistrationOpen,
         isRegistrationRequired: isRegistrationRequired,
         isOpenToOutsiders: isOpenToOutsiders,
+        createdAt: now,
+        updatedAt: now,
       });
     }
   });
@@ -346,11 +433,13 @@ async function main() {
 
   eventsData.forEach((event) => {
     const numCategories = Math.floor(Math.random() * 2) + 1;
-    const shuffled = [...ticketTemplates].sort(() => 0.5 - Math.random()).slice(0, numCategories);
+    const shuffled = [...ticketTemplates]
+      .sort(() => 0.5 - Math.random())
+      .slice(0, numCategories);
 
     shuffled.forEach((tmpl, idx) => {
       const deadline = new Date(event.dateStart);
-      deadline.setDate(deadline.getDate() - 1); // Deadline 1 day before
+      deadline.setDate(deadline.getDate() - 1);
 
       ticketCategoriesData.push({
         id: `ticket_${event.id}_${idx}`,
@@ -360,6 +449,8 @@ async function main() {
         capacity: tmpl.capacity,
         registrationDeadline: deadline,
         eventId: event.id,
+        createdAt: now,
+        updatedAt: now,
       });
     });
   });
@@ -371,23 +462,48 @@ async function main() {
 
   // --- Seed Registrations ---
   const registrationsData: any[] = [];
-  
+
   const studentProfiles = [
-    { name: 'Alex Santos', course: 'BS CS', cluster: 'Computer Studies', year: '3' },
-    { name: 'Bea Garcia', course: 'BS Accountancy', cluster: 'Accountancy', year: '2' },
-    { name: 'Charlie Cruz', course: 'BS Nursing', cluster: 'Nursing', year: '4' },
-    { name: 'Dana Reyes', course: 'AB Psych', cluster: 'Arts & Sciences', year: '1' },
-    { name: 'Evan Lim', course: 'BS ECE', cluster: 'Engineering & Architecture', year: '5' },
+    {
+      name: 'Alex Santos',
+      course: 'BS CS',
+      cluster: 'Computer Studies',
+      year: '3',
+    },
+    {
+      name: 'Bea Garcia',
+      course: 'BS Accountancy',
+      cluster: 'Accountancy',
+      year: '2',
+    },
+    {
+      name: 'Charlie Cruz',
+      course: 'BS Nursing',
+      cluster: 'Nursing',
+      year: '4',
+    },
+    {
+      name: 'Dana Reyes',
+      course: 'AB Psych',
+      cluster: 'Arts & Sciences',
+      year: '1',
+    },
+    {
+      name: 'Evan Lim',
+      course: 'BS ECE',
+      cluster: 'Engineering & Architecture',
+      year: '5',
+    },
   ];
 
   ticketCategoriesData.forEach((ticket) => {
-    // 0 to 4 registrations per ticket
     const count = Math.floor(Math.random() * 5);
-    for(let k=0; k<count; k++) {
-      const profile = studentProfiles[Math.floor(Math.random() * studentProfiles.length)];
+    for (let k = 0; k < count; k++) {
+      const profile =
+        studentProfiles[Math.floor(Math.random() * studentProfiles.length)];
       const regId = `reg_${ticket.id}_${k}`;
-      const email = `${profile.name.toLowerCase().replace(' ','')}@addu.edu.ph`;
-      
+      const email = `${profile.name.toLowerCase().replace(' ', '')}@addu.edu.ph`;
+
       registrationsData.push({
         id: regId,
         fullName: profile.name,
@@ -398,6 +514,8 @@ async function main() {
         ticketCategoryId: ticket.id,
         confirmedAt: Math.random() > 0.5 ? new Date() : null,
         isAttended: false,
+        createdAt: now,
+        updatedAt: now,
       });
     }
   });
@@ -410,14 +528,16 @@ async function main() {
   // --- Seed Event Announcements ---
   const announcementsData: any[] = [];
   const annTypes = [AnnouncementType.INFO, AnnouncementType.WARNING];
-  
+
   eventsData.forEach((event) => {
-    if(Math.random() > 0.6) { // Only some events have announcements
+    if (Math.random() > 0.6) {
       announcementsData.push({
         eventId: event.id,
         title: 'Event Update',
         content: `Updates regarding ${event.name}`,
         announcementType: annTypes[Math.floor(Math.random() * annTypes.length)],
+        createdAt: now,
+        updatedAt: now,
       });
     }
   });
