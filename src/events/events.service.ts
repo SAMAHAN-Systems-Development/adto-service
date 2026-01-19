@@ -136,7 +136,7 @@ export class EventsService {
             updatedAt: true,
           },
           orderBy: { updatedAt: 'desc' },
-        }
+        },
       },
     });
 
@@ -150,30 +150,7 @@ export class EventsService {
               eventId: event.id,
             },
           },
-        }),
-      deletedAt: null,
-      orgId,
-    };
-
-    const events = await this.prisma.event.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: {
-        dateStart: orderBy,
-      },
-      include: {
-        org: true,
-        eventAnnouncements: {
-          select: {
-            title: true,
-            content: true,
-            updatedAt: true,
-          },
-          orderBy: { updatedAt: 'desc' },
-        }
-      },
-    });
+        });
 
         return {
           ...event,
@@ -201,7 +178,7 @@ export class EventsService {
         },
         include: {
           org: true,
-          
+
           TicketCategories: true,
           eventAnnouncements: {
             select: {
@@ -210,7 +187,7 @@ export class EventsService {
               updatedAt: true,
             },
             orderBy: { updatedAt: 'desc' },
-          }
+          },
         },
       });
 
