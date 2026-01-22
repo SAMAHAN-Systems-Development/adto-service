@@ -233,6 +233,7 @@ export class OrganizationsService {
       },
       include: {
         organizationParents: true,
+        user: true,
         events: {
           include: {
             TicketCategories: true,
@@ -249,21 +250,50 @@ export class OrganizationsService {
   }
 
   async update(id: string, updateOrganizationDto: UpdateOrganizationDto) {
-    await this.findOneById(id);
+    const { email, ...organizationData } = updateOrganizationDto;
 
     try {
-      const updatedOrganization = await this.prisma.organizationChild.update({
-        where: {
-          id,
-        },
-        data: updateOrganizationDto,
-      });
+      return await this.prisma.$transaction(async (prisma) => {
+        // First, get the current organization to find its userId
+        const currentOrg = await prisma.organizationChild.findUnique({
+          where: { id },
+          include: { user: true },
+        });
 
-      return {
-        message: 'Organization updated successfully',
-        data: updatedOrganization,
-        statusCode: HttpStatus.OK,
-      };
+        if (!currentOrg) {
+          throw new HttpException(
+            'Organization not found',
+            HttpStatus.NOT_FOUND,
+          );
+        }
+
+        // Update the organization details
+        const updatedOrganization = await prisma.organizationChild.update({
+          where: { id },
+          data: organizationData,
+          include: {
+            user: true,
+            organizationParents: true,
+          },
+        });
+
+        // If email is provided and organization has a user, update the user's email
+        if (email && currentOrg.userId) {
+          await prisma.user.update({
+            where: { id: currentOrg.userId },
+            data: { email },
+          });
+        }
+
+        return {
+          message: 'Organization updated successfully',
+          data: {
+            ...updatedOrganization,
+            email: email || currentOrg.user?.email,
+          },
+          statusCode: HttpStatus.OK,
+        };
+      });
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
