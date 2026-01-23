@@ -18,7 +18,7 @@ export class OrganizationParentsController {
     private readonly organizationParentsService: OrganizationParentsService,
   ) {}
 
-  @Post()
+  @Post('/create')
   create(@Body() createOrganizationParentDto: CreateOrganizationParentDto) {
     return this.organizationParentsService.create(createOrganizationParentDto);
   }
@@ -31,22 +31,22 @@ export class OrganizationParentsController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.organizationParentsService.findOne(+id);
+    return this.organizationParentsService.findOne(id);
   }
 
-  @Patch(':id')
+  @Patch('update/:id')
   update(
     @Param('id') id: string,
     @Body() updateOrganizationParentDto: UpdateOrganizationParentDto,
   ) {
     return this.organizationParentsService.update(
-      +id,
+      id,
       updateOrganizationParentDto,
     );
   }
 
-  @Delete(':id')
+  @Delete('remove/:id')
   remove(@Param('id') id: string) {
-    return this.organizationParentsService.remove(+id);
+    return this.organizationParentsService.remove(id);
   }
 }
