@@ -115,7 +115,9 @@ export class EventsService {
             }),
           },
         }),
-      isPublished: true,
+
+      // isPublished logic based on role
+      ...(role === null ? { isPublished: true } : {}),
       deletedAt: null,
     };
 
