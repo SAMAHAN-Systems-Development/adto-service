@@ -5,7 +5,7 @@ import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { PrismaService } from '../prisma/prisma.service'; 
 import { UsersService } from '../users/users.service';
-import { SupabaseService } from '../supabase/supabase.service'; 
+import { S3Service } from '../s3/s3.service'; 
 import { Prisma, UserType } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
@@ -15,7 +15,7 @@ jest.mock('bcrypt');
 describe('OrganizationsService', () => {
   let service: OrganizationsService;
   let prismaService: PrismaService;
-  let supabaseService: SupabaseService;
+  let s3Service: S3Service;
   let usersService: UsersService;
 
   // Mock implementations
@@ -38,9 +38,10 @@ describe('OrganizationsService', () => {
     $transaction: jest.fn(),
   };
 
-  const mockSupabaseService = {
+  const mockS3Service = {
     uploadFile: jest.fn(),
-    getFileUrl: jest.fn(),
+    deleteFile: jest.fn(),
+    getSignedUrl: jest.fn(),
   };
 
   const mockUsersService = {
@@ -62,8 +63,8 @@ describe('OrganizationsService', () => {
           useValue: mockPrismaService,
         },
         {
-          provide: SupabaseService,
-          useValue: mockSupabaseService,
+          provide: S3Service,
+          useValue: mockS3Service,
         },
         {
           provide: UsersService,
@@ -74,7 +75,7 @@ describe('OrganizationsService', () => {
 
     service = module.get<OrganizationsService>(OrganizationsService);
     prismaService = module.get<PrismaService>(PrismaService);
-    supabaseService = module.get<SupabaseService>(SupabaseService);
+    s3Service = module.get<S3Service>(S3Service);
     usersService = module.get<UsersService>(UsersService);
 
     // Reset all mocks before each test
@@ -697,8 +698,8 @@ describe('findAll', () => {
       }
     });
 
-    expect(result.page).toBe(1);
-    expect(result.limit).toBe(10);
+    expect(result.meta.currentPage).toBe(1);
+    expect(result.meta.limit).toBe(10);
   });
 
   it('should calculate correct pagination skip value', async () => {

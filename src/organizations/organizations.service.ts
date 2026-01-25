@@ -9,7 +9,7 @@ import {
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { SupabaseService } from 'src/supabase/supabase.service';
+import { S3Service } from 'src/s3/s3.service';
 import { UsersService } from 'src/users/users.service';
 import { Prisma, UserType } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
@@ -18,7 +18,7 @@ import * as bcrypt from 'bcrypt';
 export class OrganizationsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly supabase: SupabaseService,
+    private readonly s3Service: S3Service,
     private readonly usersService: UsersService,
   ) {}
 
@@ -282,38 +282,38 @@ export class OrganizationsService {
       throw new HttpException('Organization not found', HttpStatus.NOT_FOUND);
     }
 
-    const organizationIconFileName = `${organization.name}-icon`;
+    const bucketName =
+      process.env.ORGANIZATION_ICON_BUCKET ||
+      process.env.AWS_ASSETS_BUCKET_NAME;
+
+    if (!bucketName) {
+      throw new HttpException(
+        'Storage bucket not configured',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
 
     try {
       const result = await this.prisma.$transaction(async (prisma) => {
-        const uploadedIcon = await this.supabase.uploadFile(
-          icon,
-          organizationIconFileName,
-          process.env.SUPABASE_BUCKET_NAME!,
-        );
+        // Upload to S3-compatible storage
+        const uploadResult = await this.s3Service.uploadFile({
+          buffer: icon.buffer,
+          fileName: icon.originalname,
+          folder: 'organization-icons',
+          contentType: icon.mimetype,
+          bucketName: bucketName,
+        });
 
-        if (!uploadedIcon) {
+        if (!uploadResult || !uploadResult.url) {
           throw new HttpException(
             'Failed to upload Organization icon',
             HttpStatus.BAD_REQUEST,
           );
         }
 
-        const retrievedIconUrl = await this.supabase.getFileUrl(
-          organizationIconFileName,
-          process.env.SUPABASE_BUCKET_NAME!,
-        );
-
-        if (!retrievedIconUrl) {
-          throw new HttpException(
-            'Failed to retrieve Organization icon',
-            HttpStatus.BAD_REQUEST,
-          );
-        }
-
         const updatedOrganization = await prisma.organizationChild.update({
           where: { id },
-          data: { icon: retrievedIconUrl },
+          data: { icon: uploadResult.url },
         });
 
         return updatedOrganization;
