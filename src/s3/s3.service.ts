@@ -29,15 +29,15 @@ export class S3Service {
   private readonly endpoint: string;
 
   constructor() {
-    this.region = process.env.SB_S3_REGION;
-    this.endpoint = process.env.SB_S3_ENDPOINT;
+    this.region = process.env.AWS_S3_REGION;
+    this.endpoint = process.env.AWS_S3_ENDPOINT;
 
     this.s3Client = new S3Client({
       region: this.region,
       endpoint: this.endpoint,
       credentials: {
-        accessKeyId: process.env.SB_S3_ACCESS_KEY,
-        secretAccessKey: process.env.SB_S3_SECRET_KEY,
+        accessKeyId: process.env.AWS_S3_ACCESS_KEY,
+        secretAccessKey: process.env.AWS_S3_SECRET_KEY,
       },
       forcePathStyle: true,
     });
