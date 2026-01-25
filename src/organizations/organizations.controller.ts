@@ -73,7 +73,7 @@ export class OrganizationsController {
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          new MaxFileSizeValidator({ maxSize: 1000000 }),
+          new MaxFileSizeValidator({ maxSize: 10000000 }), // 10MB
           new FileTypeValidator({
             fileType: /(image\/jpeg|image\/png)/,
           }),
