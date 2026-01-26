@@ -147,4 +147,6 @@ model TicketRequests {
   updatedAt  DateTime          @updatedAt
   isApproved Boolean           @default(false)
   ticketLink String?
+
+  @@unique([ticketId, orgId])
 }

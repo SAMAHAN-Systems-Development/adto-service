@@ -1,15 +1,19 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Req, Patch, Param } from '@nestjs/common';
 import { TicketRequestsService } from './ticket-requests.service';
 import { CreateTicketRequestDto } from './dto/ticket-request.dto';
-import { UpdateTicketRequestDto } from './dto/update-ticket-request.dto';
+import { ApproveTicketRequestDto } from './dto/approve-ticket.dto';
 
 @Controller('ticket-requests')
 export class TicketRequestsController {
   constructor(private readonly ticketRequestsService: TicketRequestsService) {}
 
-  @Post()
-  create(@Body() createTicketRequestDto: CreateTicketRequestDto) {
-    return this.ticketRequestsService.create(createTicketRequestDto);
+  @Post('create')
+  create(
+    @Body() createTicketRequestDto: CreateTicketRequestDto,
+    @Req() req: any,
+  ) {
+    const orgId = req.user.orgId;
+    return this.ticketRequestsService.create(createTicketRequestDto, orgId);
   }
 
   @Get()
@@ -17,18 +21,16 @@ export class TicketRequestsController {
     return this.ticketRequestsService.findAll();
   }
 
-  @Get(':id')
+  @Get('find/:id')
   findOne(@Param('id') id: string) {
-    return this.ticketRequestsService.findOne(+id);
+    return this.ticketRequestsService.findOne(id);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateTicketRequestDto: UpdateTicketRequestDto) {
-    return this.ticketRequestsService.update(+id, updateTicketRequestDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.ticketRequestsService.remove(+id);
+  @Patch('approve/:id')
+  approve(
+    @Param('id') id: string,
+    @Body() ApproveTicketRequestDto: ApproveTicketRequestDto,
+  ) {
+    return this.ticketRequestsService.approve(id, ApproveTicketRequestDto);
   }
 }
