@@ -115,7 +115,7 @@ export class EventsService {
             }),
           },
         }),
-      isPublished: true,
+    ...(role !== UserType.ADMIN && role !== UserType.ORGANIZATION && { isPublished: true }),
       deletedAt: null,
     };
 
