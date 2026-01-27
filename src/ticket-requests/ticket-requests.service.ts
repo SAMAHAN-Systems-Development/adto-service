@@ -9,6 +9,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateTicketRequestDto } from './dto/ticket-request.dto';
 import { ApproveTicketRequestDto } from './dto/approve-ticket.dto';
+import { Prisma, UserType } from '@prisma/client';
 
 @Injectable()
 export class TicketRequestsService {
@@ -42,13 +43,85 @@ export class TicketRequestsService {
     }
   }
 
-  findAll() {
-    return `This action returns all ticketRequests`;
+  async findAll(
+    role: UserType | null,
+    orgId: string | null,
+    query: {
+      page?: number;
+      limit?: number;
+      isApproved?: boolean;
+      searchFilter?: string;
+      organizationId?: string;
+      ticketId?: string;
+      orderBy?: 'asc' | 'desc';
+    },
+  ) {
+    const {
+      page = 1,
+      limit = 10,
+      isApproved,
+      searchFilter,
+      organizationId,
+      ticketId,
+      orderBy = 'asc',
+    } = query;
+
+    const skip = (page - 1) * limit;
+
+    // 🔹 Same idea as your effectiveOrgId
+    const effectiveOrgId =
+      role === UserType.ORGANIZATION && orgId ? orgId : organizationId;
+
+    const where: Prisma.TicketRequestsWhereInput = {
+      ...(isApproved !== undefined && { isApproved }),
+      ...(effectiveOrgId && { orgId: effectiveOrgId }),
+      ...(ticketId && { ticketId }),
+
+      ...(searchFilter && {
+        OR: [
+          {
+            ticket: {
+              name: { contains: searchFilter, mode: 'insensitive' },
+            },
+          },
+          {
+            org: {
+              name: { contains: searchFilter, mode: 'insensitive' },
+            },
+          },
+        ],
+      }),
+    };
+
+    const ticketRequests = await this.prisma.ticketRequests.findMany({
+      where,
+      skip,
+      take: Number(limit),
+      orderBy: {
+        createdAt: orderBy,
+      },
+      include: {
+        ticket: true,
+        org: true,
+      },
+    });
+
+    const totalCount = await this.prisma.ticketRequests.count({ where });
+
+    return {
+      data: ticketRequests,
+      meta: {
+        totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+        currentPage: page,
+        limit,
+      },
+    };
   }
 
-  findOne(id: string) {
+  async findOne(id: string) {
     try {
-      const ticketRequest = this.prisma.ticketRequests.findUnique({
+      const ticketRequest = await this.prisma.ticketRequests.findUnique({
         where: { id: id },
         select: {
           id: true,
