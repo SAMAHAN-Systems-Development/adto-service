@@ -11,6 +11,7 @@ import { EventAnnouncementsModule } from './event-announcements/event-announceme
 import { EventTicketsModule } from './event-tickets/event-tickets.module';
 
 import { RegistrationsModule } from './registrations/registrations.module';
+import { TicketRequestsModule } from './ticket-requests/ticket-requests.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { RegistrationsModule } from './registrations/registrations.module';
     EventAnnouncementsModule,
     EventTicketsModule,
     RegistrationsModule,
+    TicketRequestsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
