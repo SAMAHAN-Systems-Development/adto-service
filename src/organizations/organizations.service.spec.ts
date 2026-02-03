@@ -1226,6 +1226,7 @@ describe('OrganizationsService', () => {
     it('should use fallback bucket when ORGANIZATION_ICON_BUCKET is not set', async () => {
       // Arrange
       delete process.env.ORGANIZATION_ICON_BUCKET;
+      process.env.UPLOADS_BUCKET = 'uploads';
       jest
         .spyOn(service, 'findOneById')
         .mockResolvedValue(mockOrganization as any);
@@ -1244,7 +1245,7 @@ describe('OrganizationsService', () => {
       // Assert
       expect(mockS3Service.uploadFile).toHaveBeenCalledWith(
         expect.objectContaining({
-          bucketName: 'fallback-bucket',
+          bucketName: 'uploads',
         }),
       );
     });
@@ -1267,7 +1268,7 @@ describe('OrganizationsService', () => {
     it('should throw INTERNAL_SERVER_ERROR when bucket is not configured', async () => {
       // Arrange
       delete process.env.ORGANIZATION_ICON_BUCKET;
-      delete process.env.AWS_ASSETS_BUCKET_NAME;
+      delete process.env.UPLOADS_BUCKET;
       jest
         .spyOn(service, 'findOneById')
         .mockResolvedValue(mockOrganization as any);
