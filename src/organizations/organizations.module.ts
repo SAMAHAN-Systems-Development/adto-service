@@ -1,16 +1,14 @@
 import { Module } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
 import { OrganizationsController } from './organizations.controller';
-import { SupabaseModule } from 'src/supabase/supabase.module';
-import { PrismaModule } from 'src/prisma/prisma.module'; 
+import { S3Module } from 'src/s3/s3.module';
+import { PrismaModule } from 'src/prisma/prisma.module';
 import { UsersModule } from 'src/users/users.module';
-
 
 @Module({
   controllers: [OrganizationsController],
   providers: [OrganizationsService],
-  imports: [SupabaseModule, PrismaModule, UsersModule],
+  imports: [S3Module, PrismaModule, UsersModule],
   exports: [OrganizationsService],
-
 })
 export class OrganizationsModule {}

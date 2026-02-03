@@ -5,7 +5,7 @@ import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { PrismaService } from '../prisma/prisma.service'; 
 import { UsersService } from '../users/users.service';
-import { SupabaseService } from '../supabase/supabase.service'; 
+import { S3Service } from '../s3/s3.service'; 
 import { Prisma, UserType } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
@@ -15,7 +15,7 @@ jest.mock('bcrypt');
 describe('OrganizationsService', () => {
   let service: OrganizationsService;
   let prismaService: PrismaService;
-  let supabaseService: SupabaseService;
+  let s3Service: S3Service;
   let usersService: UsersService;
 
   // Mock implementations
@@ -38,9 +38,10 @@ describe('OrganizationsService', () => {
     $transaction: jest.fn(),
   };
 
-  const mockSupabaseService = {
+  const mockS3Service = {
     uploadFile: jest.fn(),
-    getFileUrl: jest.fn(),
+    deleteFile: jest.fn(),
+    getSignedUrl: jest.fn(),
   };
 
   const mockUsersService = {
@@ -61,9 +62,8 @@ describe('OrganizationsService', () => {
           provide: PrismaService,
           useValue: mockPrismaService,
         },
-        {
-          provide: SupabaseService,
-          useValue: mockSupabaseService,
+        {3Service,
+          useValue: mockS3Service,
         },
         {
           provide: UsersService,
@@ -74,6 +74,7 @@ describe('OrganizationsService', () => {
 
     service = module.get<OrganizationsService>(OrganizationsService);
     prismaService = module.get<PrismaService>(PrismaService);
+    s3Service = module.get<S3Service>(S3e);
     supabaseService = module.get<SupabaseService>(SupabaseService);
     usersService = module.get<UsersService>(UsersService);
 
@@ -1060,5 +1061,258 @@ describe('findArchivedOrganizations', () => {
     );
   });
 });
+
+  describe('updateOrganizationIcon', () => {
+    const mockFile = {
+      buffer: Buffer.from('fake-image-data'),
+      originalname: 'test-icon.jpg',
+      mimetype: 'image/jpeg',
+      size: 1024,
+    } as Express.Multer.File;
+
+    const mockOrganization = {
+      id: 'org-123',
+      name: 'Test Organization',
+      icon: null,
+    };
+
+    const mockUploadResult = {
+      url: 'https://storage.example.com/organization-icon/12345-abc.jpg',
+      key: 'organization-icons/12345-abc.jpg',
+      bucket: 'organization-icon',
+    };
+
+    beforeEach(() => {
+      // Set environment variables
+      process.env.ORGANIZATION_ICON_BUCKET = 'organization-icon';
+      process.env.AWS_ASSETS_BUCKET_NAME = 'fallback-bucket';
+    });
+
+    afterEach(() => {
+      delete process.env.ORGANIZATION_ICON_BUCKET;
+      delete process.env.AWS_ASSETS_BUCKET_NAME;
+    });
+
+    it('should successfully upload organization icon', async () => {
+      // Arrange
+      jest.spyOn(service, 'findOneById').mockResolvedValue(mockOrganization as any);
+      mockS3Service.uploadFile.mockResolvedValue(mockUploadResult);
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return await callback(mockPrismaService);
+      });
+      mockPrismaService.organizationChild.update.mockResolvedValue({
+        ...mockOrganization,
+        icon: mockUploadResult.url,
+      });
+
+      // Act
+      const result = await service.updateOrganizationIcon('org-123', mockFile);
+
+      // Assert
+      expect(service.findOneById).toHaveBeenCalledWith('org-123');
+      expect(mockS3Service.uploadFile).toHaveBeenCalledWith({
+        buffer: mockFile.buffer,
+        fileName: mockFile.originalname,
+        folder: 'organization-icons',
+        contentType: mockFile.mimetype,
+        bucketName: 'organization-icon',
+      });
+      expect(mockPrismaService.organizationChild.update).toHaveBeenCalledWith({
+        where: { id: 'org-123' },
+        data: { icon: mockUploadResult.url },
+      });
+      expect(result).toEqual({
+        message: 'Organization icon updated successfully',
+        organization: { ...mockOrganization, icon: mockUploadResult.url },
+      });
+    });
+
+    it('should use fallback bucket when ORGANIZATION_ICON_BUCKET is not set', async () => {
+      // Arrange
+      delete process.env.ORGANIZATION_ICON_BUCKET;
+      jest.spyOn(service, 'findOneById').mockResolvedValue(mockOrganization as any);
+      mockS3Service.uploadFile.mockResolvedValue(mockUploadResult);
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return await callback(mockPrismaService);
+      });
+      mockPrismaService.organizationChild.update.mockResolvedValue({
+        ...mockOrganization,
+        icon: mockUploadResult.url,
+      });
+
+      // Act
+      await service.updateOrganizationIcon('org-123', mockFile);
+
+      // Assert
+      expect(mockS3Service.uploadFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bucketName: 'fallback-bucket',
+        }),
+      );
+    });
+
+    it('should throw NOT_FOUND when organization does not exist', async () => {
+      // Arrange
+      jest.spyOn(service, 'findOneById').mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(
+        service.updateOrganizationIcon('non-existent-id', mockFile),
+      ).rejects.toThrow(
+        new HttpException('Organization not found', HttpStatus.NOT_FOUND),
+      );
+
+      expect(mockS3Service.uploadFile).not.toHaveBeenCalled();
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('should throw INTERNAL_SERVER_ERROR when bucket is not configured', async () => {
+      // Arrange
+      delete process.env.ORGANIZATION_ICON_BUCKET;
+      delete process.env.AWS_ASSETS_BUCKET_NAME;
+      jest.spyOn(service, 'findOneById').mockResolvedValue(mockOrganization as any);
+
+      // Act & Assert
+      await expect(
+        service.updateOrganizationIcon('org-123', mockFile),
+      ).rejects.toThrow(
+        new HttpException(
+          'Storage bucket not configured',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+
+      expect(mockS3Service.uploadFile).not.toHaveBeenCalled();
+    });
+
+    it('should throw BAD_REQUEST when S3 upload returns null', async () => {
+      // Arrange
+      jest.spyOn(service, 'findOneById').mockResolvedValue(mockOrganization as any);
+      mockS3Service.uploadFile.mockResolvedValue(null);
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return await callback(mockPrismaService);
+      });
+
+      // Act & Assert
+      await expect(
+        service.updateOrganizationIcon('org-123', mockFile),
+      ).rejects.toThrow(
+        new HttpException(
+          'Failed to upload Organization icon',
+          HttpStatus.BAD_REQUEST,
+        ),
+      );
+    });
+
+    it('should throw BAD_REQUEST when S3 upload returns result without URL', async () => {
+      // Arrange
+      jest.spyOn(service, 'findOneById').mockResolvedValue(mockOrganization as any);
+      mockS3Service.uploadFile.mockResolvedValue({ key: 'test-key', bucket: 'test-bucket' });
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return await callback(mockPrismaService);
+      });
+
+      // Act & Assert
+      await expect(
+        service.updateOrganizationIcon('org-123', mockFile),
+      ).rejects.toThrow(
+        new HttpException(
+          'Failed to upload Organization icon',
+          HttpStatus.BAD_REQUEST,
+        ),
+      );
+    });
+
+    it('should handle database update errors gracefully', async () => {
+      // Arrange
+      jest.spyOn(service, 'findOneById').mockResolvedValue(mockOrganization as any);
+      mockS3Service.uploadFile.mockResolvedValue(mockUploadResult);
+      mockPrismaService.$transaction.mockRejectedValue(
+        new Error('Database connection failed'),
+      );
+
+      // Act & Assert
+      await expect(
+        service.updateOrganizationIcon('org-123', mockFile),
+      ).rejects.toThrow(
+        new HttpException(
+          'Database connection failed',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+    });
+
+    it('should preserve HttpException errors from transaction', async () => {
+      // Arrange
+      jest.spyOn(service, 'findOneById').mockResolvedValue(mockOrganization as any);
+      const customError = new HttpException('Custom error', HttpStatus.FORBIDDEN);
+      mockPrismaService.$transaction.mockRejectedValue(customError);
+
+      // Act & Assert
+      await expect(
+        service.updateOrganizationIcon('org-123', mockFile),
+      ).rejects.toThrow(customError);
+    });
+
+    it('should call S3 uploadFile with correct parameters for PNG file', async () => {
+      // Arrange
+      const pngFile = {
+        ...mockFile,
+        originalname: 'test-icon.png',
+        mimetype: 'image/png',
+      } as Express.Multer.File;
+
+      jest.spyOn(service, 'findOneById').mockResolvedValue(mockOrganization as any);
+      mockS3Service.uploadFile.mockResolvedValue(mockUploadResult);
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return await callback(mockPrismaService);
+      });
+      mockPrismaService.organizationChild.update.mockResolvedValue({
+        ...mockOrganization,
+        icon: mockUploadResult.url,
+      });
+
+      // Act
+      await service.updateOrganizationIcon('org-123', pngFile);
+
+      // Assert
+      expect(mockS3Service.uploadFile).toHaveBeenCalledWith({
+        buffer: pngFile.buffer,
+        fileName: pngFile.originalname,
+        folder: 'organization-icons',
+        contentType: 'image/png',
+        bucketName: 'organization-icon',
+      });
+    });
+
+    it('should update organization with the returned URL from S3', async () => {
+      // Arrange
+      const customUrl = 'https://custom-cdn.com/org-icon.jpg';
+      const customUploadResult = {
+        ...mockUploadResult,
+        url: customUrl,
+      };
+
+      jest.spyOn(service, 'findOneById').mockResolvedValue(mockOrganization as any);
+      mockS3Service.uploadFile.mockResolvedValue(customUploadResult);
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return await callback(mockPrismaService);
+      });
+      mockPrismaService.organizationChild.update.mockResolvedValue({
+        ...mockOrganization,
+        icon: customUrl,
+      });
+
+      // Act
+      const result = await service.updateOrganizationIcon('org-123', mockFile);
+
+      // Assert
+      expect(mockPrismaService.organizationChild.update).toHaveBeenCalledWith({
+        where: { id: 'org-123' },
+        data: { icon: customUrl },
+      });
+      expect(result.organization.icon).toBe(customUrl);
+    });
+  });
 
 });
