@@ -7,8 +7,8 @@ import {
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 
-// Load production environment variables
-dotenv.config({ path: path.join(__dirname, '../.env.production.test') });
+// Load environment variables
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // ANSI color codes for terminal output
 const colors = {
@@ -48,9 +48,8 @@ function logWarning(message: string) {
   log(`⚠️  ${message}`, colors.yellow);
 }
 
-async function testProductionS3() {
-  logSection('🚀 Production S3 Connection Test');
-  logWarning('Testing against PRODUCTION Supabase instance!');
+async function testS3Connection() {
+  logSection('🧪 S3 Connection Test');
 
   // Step 1: Check environment variables
   logSection('Step 1: Environment Variables');
@@ -69,14 +68,7 @@ async function testProductionS3() {
   for (const envVar of requiredEnvVars) {
     const value = process.env[envVar];
     if (value) {
-      // Mask sensitive values
-      if (envVar.includes('KEY') || envVar.includes('SECRET')) {
-        const masked =
-          value.substring(0, 8) + '...' + value.substring(value.length - 4);
-        logSuccess(`${envVar}: ${masked}`);
-      } else {
-        logSuccess(`${envVar}: ${value}`);
-      }
+      logSuccess(`${envVar}: ${value}`);
     } else {
       logError(`${envVar}: NOT SET`);
       allEnvVarsPresent = false;
@@ -85,7 +77,7 @@ async function testProductionS3() {
 
   if (!allEnvVarsPresent) {
     logError('\n❌ Missing required environment variables!');
-    logInfo('Please check your .env.production.test file.');
+    logInfo('Please check your .env file and ensure all variables are set.');
     process.exit(1);
   }
 
@@ -129,14 +121,16 @@ async function testProductionS3() {
       });
     } else {
       logWarning('No buckets found');
-      logInfo('You may need to create buckets in production Supabase Storage');
+      logInfo('You may need to create buckets in Supabase Storage dashboard');
+      logInfo('Visit: http://127.0.0.1:54323 (Storage section)');
     }
   } catch (error) {
-    logWarning(`Could not list buckets: ${error.message}`);
-    logInfo(
-      'This is normal for Supabase Storage - bucket listing may not be supported',
-    );
-    logInfo('Continuing with upload test to verify connection...');
+    logError(`Failed to list buckets: ${error.message}`);
+    if (error.message.includes('ECONNREFUSED')) {
+      logWarning('\n⚠️  Connection refused!');
+      logInfo('Is Supabase running? Try: supabase start');
+    }
+    process.exit(1);
   }
 
   // Step 4: Test file upload
@@ -144,12 +138,11 @@ async function testProductionS3() {
 
   const testBucket =
     process.env.ORGANIZATION_ICON_BUCKET || 'organization-icon';
-  const testKey = `test-uploads/prod-connection-test-${Date.now()}.txt`;
-  const testContent = 'Production S3 connection test from AWS SDK';
+  const testKey = `test-uploads/connection-test-${Date.now()}.txt`;
+  const testContent = 'Hello from S3 connection test!';
 
   logInfo(`Testing upload to bucket: ${testBucket}`);
   logInfo(`File key: ${testKey}`);
-  logWarning('⚠️  This will create a real file in production storage!');
 
   try {
     const putCommand = new PutObjectCommand({
@@ -160,7 +153,7 @@ async function testProductionS3() {
     });
 
     await s3Client.send(putCommand);
-    logSuccess('✅ File uploaded successfully to PRODUCTION!');
+    logSuccess('✅ File uploaded successfully!');
 
     // Construct URL
     const endpoint = process.env.SB_S3_ENDPOINT || '';
@@ -183,52 +176,41 @@ async function testProductionS3() {
       logSuccess('Test file deleted successfully');
     } catch (error) {
       logWarning(`Failed to delete test file: ${error.message}`);
-      logInfo(`You may need to manually delete: ${testKey}`);
     }
   } catch (error) {
     logError(`Failed to upload test file: ${error.message}`);
 
     if (error.message.includes('NoSuchBucket')) {
-      logWarning('\n⚠️  Bucket not found in production!');
-      logInfo(
-        `Please create the "${testBucket}" bucket in production Supabase Storage`,
-      );
-      logInfo(
-        'Visit: https://supabase.com/dashboard/project/hqjuyemsgndugxyshcrj/storage/buckets',
-      );
-    }
-
-    if (
-      error.message.includes('403') ||
-      error.message.includes('Access Denied')
-    ) {
-      logWarning('\n⚠️  Access denied!');
-      logInfo('Check if your S3 credentials have write permissions');
+      logWarning('\n⚠️  Bucket not found!');
+      logInfo(`Please create the "${testBucket}" bucket in Supabase Storage`);
+      logInfo('Visit: http://127.0.0.1:54323 (Storage section)');
+      logInfo('Make sure to set the bucket as PUBLIC');
     }
 
     process.exit(1);
   }
 
   // Final summary
-  logSection('🎉 Production Test Summary');
-  logSuccess('All production tests passed!');
+  logSection('🎉 Test Summary');
+  logSuccess('All tests passed!');
   logSuccess('✅ Environment variables configured');
   logSuccess('✅ S3 client initialized');
-  logSuccess('✅ Connected to production Supabase Storage');
+  logSuccess('✅ Connected to S3-compatible storage');
   logSuccess('✅ File upload successful');
   logSuccess('✅ File deletion successful');
 
   log('\n' + '='.repeat(60), colors.green);
-  log('🚀 Production S3 integration is working!', colors.bright + colors.green);
+  log(
+    '🚀 Your S3 integration is working correctly!',
+    colors.bright + colors.green,
+  );
   log('='.repeat(60) + '\n', colors.green);
-
-  logWarning('⚠️  Remember: You tested against PRODUCTION storage!');
 
   process.exit(0);
 }
 
 // Run the test
-testProductionS3().catch((error) => {
+testS3Connection().catch((error) => {
   logError(`\n❌ Unexpected error: ${error.message}`);
   console.error(error);
   process.exit(1);

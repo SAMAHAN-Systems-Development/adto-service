@@ -282,8 +282,9 @@ export class OrganizationsService {
       throw new HttpException('Organization not found', HttpStatus.NOT_FOUND);
     }
 
-    const bucketName = process.env.ORGANIZATION_ICON_BUCKET || process.env.AWS_ASSETS_BUCKET_NAME;
-    
+    const bucketName =
+      process.env.ORGANIZATION_ICON_BUCKET || process.env.UPLOADS_BUCKET;
+
     if (!bucketName) {
       throw new HttpException(
         'Storage bucket not configured',

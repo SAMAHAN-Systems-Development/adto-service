@@ -7,11 +7,11 @@ export class AssetsService {
 
   constructor(private readonly s3Service: S3Service) {
     this.bucketName =
-      process.env.EVENT_IMAGES_BUCKET || process.env.AWS_ASSETS_BUCKET_NAME;
+      process.env.EVENT_IMAGES_BUCKET || process.env.UPLOADS_BUCKET;
 
     if (!this.bucketName) {
       throw new Error(
-        'Assets bucket not configured. Please set EVENT_IMAGES_BUCKET or AWS_ASSETS_BUCKET_NAME environment variable.',
+        'Assets bucket not configured. Please set EVENT_IMAGES_BUCKET or UPLOADS_BUCKET environment variable.',
       );
     }
   }

@@ -26,14 +26,14 @@ export class S3Service {
   private readonly s3Client: S3Client;
 
   constructor() {
-    const region = process.env.AWS_S3_REGION;
-    const endpoint = process.env.AWS_S3_ENDPOINT;
-    const accessKeyId = process.env.AWS_S3_ACCESS_KEY;
-    const secretAccessKey = process.env.AWS_S3_SECRET_KEY;
+    const region = process.env.SB_S3_REGION;
+    const endpoint = process.env.SB_S3_ENDPOINT;
+    const accessKeyId = process.env.SB_S3_ACCESS_KEY;
+    const secretAccessKey = process.env.SB_S3_SECRET_KEY;
 
     if (!region || !endpoint || !accessKeyId || !secretAccessKey) {
       throw new Error(
-        'Missing required S3 configuration. Please set AWS_S3_REGION, AWS_S3_ENDPOINT, AWS_S3_ACCESS_KEY, and AWS_S3_SECRET_KEY environment variables.',
+        'Missing required S3 configuration. Please set SB_S3_REGION, SB_S3_ENDPOINT, SB_S3_ACCESS_KEY, and SB_S3_SECRET_KEY environment variables.',
       );
     }
 
@@ -84,7 +84,7 @@ export class S3Service {
       // Construct the public URL
       // For Supabase Storage: https://project-ref.supabase.co/storage/v1/object/public/bucket/key
       // For AWS S3: https://bucket.s3.region.amazonaws.com/key
-      const endpoint = process.env.AWS_S3_ENDPOINT || '';
+      const endpoint = process.env.SB_S3_ENDPOINT || '';
       const publicUrl = endpoint.includes('supabase')
         ? `${endpoint.replace('/s3', '')}/object/public/${bucketName}/${key}`
         : `${endpoint}/${bucketName}/${key}`;
