@@ -3,9 +3,9 @@ import { HttpException, HttpStatus, NotFoundException } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
-import { PrismaService } from '../prisma/prisma.service'; 
+import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
-import { SupabaseService } from '../supabase/supabase.service'; 
+import { S3Service } from '../s3/s3.service';
 import { Prisma, UserType } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
@@ -15,7 +15,7 @@ jest.mock('bcrypt');
 describe('OrganizationsService', () => {
   let service: OrganizationsService;
   let prismaService: PrismaService;
-  let supabaseService: SupabaseService;
+  let s3Service: S3Service;
   let usersService: UsersService;
 
   // Mock implementations
@@ -38,9 +38,10 @@ describe('OrganizationsService', () => {
     $transaction: jest.fn(),
   };
 
-  const mockSupabaseService = {
+  const mockS3Service = {
     uploadFile: jest.fn(),
-    getFileUrl: jest.fn(),
+    deleteFile: jest.fn(),
+    getSignedUrl: jest.fn(),
   };
 
   const mockUsersService = {
@@ -62,8 +63,8 @@ describe('OrganizationsService', () => {
           useValue: mockPrismaService,
         },
         {
-          provide: SupabaseService,
-          useValue: mockSupabaseService,
+          provide: S3Service,
+          useValue: mockS3Service,
         },
         {
           provide: UsersService,
@@ -74,7 +75,7 @@ describe('OrganizationsService', () => {
 
     service = module.get<OrganizationsService>(OrganizationsService);
     prismaService = module.get<PrismaService>(PrismaService);
-    supabaseService = module.get<SupabaseService>(SupabaseService);
+    s3Service = module.get<S3Service>(S3Service);
     usersService = module.get<UsersService>(UsersService);
 
     // Reset all mocks before each test
@@ -116,7 +117,7 @@ describe('OrganizationsService', () => {
     it('should create an organization successfully with email and password', async () => {
       // Arrange
       mockUsersService.findByEmail.mockResolvedValue(null); // Email doesn't exist
-      
+
       // Mock the transaction function
       mockPrismaService.$transaction.mockImplementation(async (callback) => {
         // Mock prisma within transaction
@@ -128,7 +129,7 @@ describe('OrganizationsService', () => {
             create: jest.fn().mockResolvedValue(mockCreatedOrganization),
           },
         };
-        
+
         return callback(mockPrismaTransaction);
       });
 
@@ -136,12 +137,13 @@ describe('OrganizationsService', () => {
       const result = await service.create(validCreateDto);
 
       // Assert
-      expect(mockUsersService.findByEmail).toHaveBeenCalledWith(validCreateDto.email);
+      expect(mockUsersService.findByEmail).toHaveBeenCalledWith(
+        validCreateDto.email,
+      );
 
-      
       expect(bcrypt.genSalt).toHaveBeenCalledWith(10);
       expect(bcrypt.hash).toHaveBeenCalledWith(validCreateDto.password, 'salt');
-      
+
       expect(result).toEqual({
         message: 'Organization created successfully',
         data: mockCreatedOrganization,
@@ -164,7 +166,7 @@ describe('OrganizationsService', () => {
       };
 
       mockUsersService.findByEmail.mockResolvedValue(null);
-      
+
       mockPrismaService.$transaction.mockImplementation(async (callback) => {
         const mockPrismaTransaction = {
           user: { create: jest.fn() },
@@ -181,7 +183,7 @@ describe('OrganizationsService', () => {
       // Assert
       expect(bcrypt.genSalt).not.toHaveBeenCalled();
       expect(bcrypt.hash).not.toHaveBeenCalled();
-      
+
       expect(result.data.userId).toBeNull();
     });
 
@@ -229,7 +231,10 @@ describe('OrganizationsService', () => {
 
       // Act & Assert
       await expect(service.create(validCreateDto)).rejects.toThrow(
-        new HttpException('A user with this email already exists', HttpStatus.CONFLICT),
+        new HttpException(
+          'A user with this email already exists',
+          HttpStatus.CONFLICT,
+        ),
       );
 
       expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
@@ -238,7 +243,7 @@ describe('OrganizationsService', () => {
     it('should handle Prisma errors during user creation', async () => {
       // Arrange
       mockUsersService.findByEmail.mockResolvedValue(null);
-      
+
       const prismaError = new Error('Database connection failed');
       mockPrismaService.$transaction.mockRejectedValue(prismaError);
 
@@ -254,716 +259,31 @@ describe('OrganizationsService', () => {
 
   // ...existing code...
 
-describe('archiveOrganizationChild', () => {
-  it('should archive organization successfully', async () => {
-    // Arrange
-    const orgId = 'org_123';
-    const existingOrg = { 
-      id: orgId, 
-      name: 'Test Org',
-      isArchived: false 
-    };
-    const archivedOrg = { ...existingOrg, isArchived: true };
-
-    // Mock findOneById (not findFirst)
-    mockPrismaService.organizationChild.findUnique.mockResolvedValue(existingOrg);
-    mockPrismaService.organizationChild.update.mockResolvedValue(archivedOrg);
-
-    // Act
-    const result = await service.archiveOrganizationChild(orgId);
-
-    // Assert
-    expect(mockPrismaService.organizationChild.findUnique).toHaveBeenCalledWith({
-      where: { id: orgId },
-      include: {
-        organizationParents: true,
-        events: {
-          include: {
-            registrations: true,
-            ticketCategories: true,
-          },
-        },
-      },
-    });
-    
-    expect(mockPrismaService.organizationChild.update).toHaveBeenCalledWith({
-      where: { id: orgId },
-      data: { isArchived: true },
-    });
-
-    // Check the structured response
-    expect(result).toEqual({
-      message: 'Organization archived successfully',
-      data: archivedOrg,
-      statusCode: HttpStatus.OK,
-    });
-  });
-
-  it('should throw HttpException when organization does not exist for archive', async () => {
-    // Arrange
-    const orgId = 'nonexistent';
-    mockPrismaService.organizationChild.findUnique.mockResolvedValue(null);
-
-    // Act & Assert
-    await expect(service.archiveOrganizationChild(orgId)).rejects.toThrow(
-      new HttpException('Organization not found', HttpStatus.NOT_FOUND)
-    );
-    
-    expect(mockPrismaService.organizationChild.update).not.toHaveBeenCalled();
-  });
-
-  it('should handle database errors during archive', async () => {
-    // Arrange
-    const orgId = 'org_123';
-    const existingOrg = { id: orgId, isArchived: false };
-    
-    mockPrismaService.organizationChild.findUnique.mockResolvedValue(existingOrg);
-    mockPrismaService.organizationChild.update.mockRejectedValue(
-      new Error('Database error')
-    );
-
-    // Act & Assert
-    await expect(service.archiveOrganizationChild(orgId)).rejects.toThrow(
-      new HttpException(
-        'Failed to archive organization',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      )
-    );
-  });
-});
-
-describe('unarchiveOrganizationChild', () => {
-  it('should unarchive organization successfully', async () => {
-    // Arrange
-    const orgId = 'org_123';
-    const existingOrg = { 
-      id: orgId, 
-      name: 'Test Org',
-      isArchived: true 
-    };
-    const unarchivedOrg = { ...existingOrg, isArchived: false };
-
-    mockPrismaService.organizationChild.findUnique.mockResolvedValue(existingOrg);
-    mockPrismaService.organizationChild.update.mockResolvedValue(unarchivedOrg);
-
-    // Act
-    const result = await service.unarchiveOrganizationChild(orgId);
-
-    // Assert
-    expect(mockPrismaService.organizationChild.findUnique).toHaveBeenCalledWith({
-      where: { id: orgId },
-      include: {
-        organizationParents: true,
-        events: {
-          include: {
-            registrations: true,
-            ticketCategories: true,
-          },
-        },
-      },
-    });
-    
-    expect(mockPrismaService.organizationChild.update).toHaveBeenCalledWith({
-      where: { id: orgId },
-      data: { isArchived: false },
-    });
-
-    expect(result).toEqual({
-      message: 'Organization unarchived successfully',
-      data: unarchivedOrg,
-      statusCode: HttpStatus.OK,
-    });
-  });
-
-  it('should throw HttpException when organization does not exist for unarchive', async () => {
-    // Arrange
-    const orgId = 'nonexistent';
-    mockPrismaService.organizationChild.findUnique.mockResolvedValue(null);
-
-    // Act & Assert
-    await expect(service.unarchiveOrganizationChild(orgId)).rejects.toThrow(
-      new HttpException('Organization not found', HttpStatus.NOT_FOUND)
-    );
-    
-    expect(mockPrismaService.organizationChild.update).not.toHaveBeenCalled();
-  });
-
-  it('should handle database errors during unarchive', async () => {
-    // Arrange
-    const orgId = 'org_123';
-    const existingOrg = { id: orgId, isArchived: true };
-    
-    mockPrismaService.organizationChild.findUnique.mockResolvedValue(existingOrg);
-    mockPrismaService.organizationChild.update.mockRejectedValue(
-      new Error('Database error')
-    );
-
-    // Act & Assert
-    await expect(service.unarchiveOrganizationChild(orgId)).rejects.toThrow(
-      new HttpException(
-        'Failed to unarchive organization',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      )
-    );
-  });
-});
-
-describe('updateArchiveStatus (private method via public methods)', () => {
-  it('should toggle archive status correctly', async () => {
-    // Test through both public methods to verify the private method works
-    const orgId = 'org_123';
-    const existingOrg = { id: orgId, isArchived: false };
-    
-    // Test archiving
-    mockPrismaService.organizationChild.findUnique.mockResolvedValue(existingOrg);
-    mockPrismaService.organizationChild.update.mockResolvedValue({ 
-      ...existingOrg, 
-      isArchived: true 
-    });
-
-    const archiveResult = await service.archiveOrganizationChild(orgId);
-    expect(archiveResult.message).toBe('Organization archived successfully');
-
-    // Reset mocks for unarchive test
-    jest.clearAllMocks();
-    
-    // Test unarchiving
-    mockPrismaService.organizationChild.findUnique.mockResolvedValue({
-      ...existingOrg,
-      isArchived: true
-    });
-    mockPrismaService.organizationChild.update.mockResolvedValue({
-      ...existingOrg,
-      isArchived: false
-    });
-
-    const unarchiveResult = await service.unarchiveOrganizationChild(orgId);
-    expect(unarchiveResult.message).toBe('Organization unarchived successfully');
-  });
-});
-
-
-describe('update', () => {
-  const orgId = 'org_123';
-  const updateDto: UpdateOrganizationDto = {
-    name: 'Updated Organization Name',
-    acronym: 'UON',
-    description: 'Updated description',
-    facebook: 'https://facebook.com/updated',
-  };
-
-  const existingOrganization = {
-    id: orgId,
-    name: 'Original Organization',
-    acronym: 'OO',
-    description: 'Original description',
-    isArchived: false,
-    userId: 'user_123',
-    user: {
-      id: 'user_123',
-      email: 'org@example.com',
-      userType: UserType.ORGANIZATION,
-      isActive: true,
-    },
-    organizationParents: [],
-    events: [],
-  };
-
-  const updatedOrganization = {
-    ...existingOrganization,
-    ...updateDto,
-  };
-
-  it('should update organization successfully', async () => {
-    // Arrange
-    mockPrismaService.organizationChild.findUnique.mockResolvedValue(existingOrganization);
-    mockPrismaService.organizationChild.update.mockResolvedValue(updatedOrganization);
-
-    // Act
-    const result = await service.update(orgId, updateDto);
-
-    // Assert
-    expect(mockPrismaService.organizationChild.findUnique).toHaveBeenCalledWith({
-      where: { id: orgId },
-      include: {
-        organizationParents: true,
-        events: {
-          include: {
-            registrations: true,
-            ticketCategories: true,
-          },
-        },
-      },
-    });
-
-    expect(mockPrismaService.organizationChild.update).toHaveBeenCalledWith({
-      where: { id: orgId },
-      data: updateDto,
-    });
-
-    expect(result).toEqual({
-      message: 'Organization updated successfully',
-      data: updatedOrganization,
-      statusCode: HttpStatus.OK,
-    });
-  });
-
-  it('should throw HttpException when organization does not exist', async () => {
-    // Arrange
-    mockPrismaService.organizationChild.findUnique.mockResolvedValue(null);
-
-    // Act & Assert
-    await expect(service.update(orgId, updateDto)).rejects.toThrow(
-      new HttpException('Organization not found', HttpStatus.NOT_FOUND)
-    );
-
-    expect(mockPrismaService.organizationChild.update).not.toHaveBeenCalled();
-  });
-
-  it('should handle database errors during update', async () => {
-    // Arrange
-    mockPrismaService.organizationChild.findUnique.mockResolvedValue(existingOrganization);
-    mockPrismaService.organizationChild.update.mockRejectedValue(
-      new Error('Database connection failed')
-    );
-
-    // Act & Assert
-    await expect(service.update(orgId, updateDto)).rejects.toThrow(
-      new HttpException(
-        'Failed to update organization',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      )
-    );
-  });
-
-  it('should handle Prisma known request errors during update', async () => {
-    // Arrange
-    mockPrismaService.organizationChild.findUnique.mockResolvedValue(existingOrganization);
-    
-    const prismaError = new Error('Prisma known error');
-    prismaError.name = 'PrismaClientKnownRequestError';
-    prismaError['code'] = 'P2025'; // Record not found
-    
-    mockPrismaService.organizationChild.update.mockRejectedValue(prismaError);
-
-    // Act & Assert
-    await expect(service.update(orgId, updateDto)).rejects.toThrow(
-      new HttpException(
-        'Failed to update organization',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      )
-    );
-  });
-
-  it('should update organization with partial data', async () => {
-    // Arrange
-    const partialUpdateDto: UpdateOrganizationDto = {
-      name: 'Partially Updated Name',
-    };
-
-    const partiallyUpdatedOrganization = {
-      ...existingOrganization,
-      name: 'Partially Updated Name',
-    };
-
-    mockPrismaService.organizationChild.findUnique.mockResolvedValue(existingOrganization);
-    mockPrismaService.organizationChild.update.mockResolvedValue(partiallyUpdatedOrganization);
-
-    // Act
-    const result = await service.update(orgId, partialUpdateDto);
-
-    // Assert
-    expect(mockPrismaService.organizationChild.update).toHaveBeenCalledWith({
-      where: { id: orgId },
-      data: partialUpdateDto,
-    });
-
-    expect(result.data.name).toBe('Partially Updated Name');
-    expect(result.message).toBe('Organization updated successfully');
-  });
-
-  it('should update organization with empty update data', async () => {
-    // Arrange
-    const emptyUpdateDto: UpdateOrganizationDto = {};
-
-    mockPrismaService.organizationChild.findUnique.mockResolvedValue(existingOrganization);
-    mockPrismaService.organizationChild.update.mockResolvedValue(existingOrganization);
-
-    // Act
-    const result = await service.update(orgId, emptyUpdateDto);
-
-    // Assert
-    expect(mockPrismaService.organizationChild.update).toHaveBeenCalledWith({
-      where: { id: orgId },
-      data: {},
-    });
-
-    expect(result.data).toEqual(existingOrganization);
-    expect(result.message).toBe('Organization updated successfully');
-  });
-
-  it('should re-throw HttpException errors without wrapping', async () => {
-    // Arrange
-    const customHttpException = new HttpException('Custom error', HttpStatus.BAD_REQUEST);
-    
-    mockPrismaService.organizationChild.findUnique.mockResolvedValue(existingOrganization);
-    mockPrismaService.organizationChild.update.mockRejectedValue(customHttpException);
-
-    // Act & Assert
-    await expect(service.update(orgId, updateDto)).rejects.toThrow(customHttpException);
-  });
-});
-
-describe('findAll', () => {
-  const mockOrganizations = [
-    {
-      id: 'org_1',
-      name: 'Organization 1',
-      acronym: 'ORG1',
-      isArchived: false,
-      organizationParents: [],
-      events: []
-    },
-    {
-      id: 'org_2',
-      name: 'Organization 2',
-      acronym: 'ORG2',
-      isArchived: false,
-      organizationParents: [],
-      events: []
-    }
-  ];
-
-  it('should return paginated organizations successfully', async () => {
-    // Arrange
-    const query = { page: 1, limit: 10, searchFilter: 'test', orderBy: 'asc' as 'asc' | 'desc' };
-    mockPrismaService.organizationChild.findMany.mockResolvedValue(mockOrganizations);
-
-    // Act
-    const result = await service.findAll(query);
-
-    // Assert
-    expect(mockPrismaService.organizationChild.findMany).toHaveBeenCalledWith({
-      where: {
-        OR: [
-          { name: { contains: 'test', mode: 'insensitive' } },
-          { acronym: { contains: 'test', mode: 'insensitive' } }
-        ],
-        isArchived: false
-      },
-      skip: 0,
-      take: 10,
-      orderBy: { name: 'asc' },
-      include: {
-        organizationParents: true,
-        events: {
-          include: {
-            registrations: true,
-            ticketCategories: true,
-          },
-        },
-      }
-    });
-
-    expect(result).toEqual({
-      message: 'Organizations fetched successfully',
-      data: mockOrganizations,
-      page: 1,
-      limit: 10
-    });
-  });
-
-  it('should return organizations with default pagination when no query params provided', async () => {
-    // Arrange
-    mockPrismaService.organizationChild.findMany.mockResolvedValue(mockOrganizations);
-
-    // Act
-    const result = await service.findAll({});
-
-    // Assert
-    expect(mockPrismaService.organizationChild.findMany).toHaveBeenCalledWith({
-      where: { isArchived: false },
-      skip: 0,
-      take: 10,
-      orderBy: { name: 'asc' },
-      include: {
-        organizationParents: true,
-        events: {
-          include: {
-            registrations: true,
-            ticketCategories: true,
-          },
-        },
-      }
-    });
-
-    expect(result.page).toBe(1);
-    expect(result.limit).toBe(10);
-  });
-
-  it('should calculate correct pagination skip value', async () => {
-    // Arrange
-    const query = { page: 3, limit: 5 };
-    mockPrismaService.organizationChild.findMany.mockResolvedValue([]);
-
-    // Act
-    await service.findAll(query);
-
-    // Assert
-    expect(mockPrismaService.organizationChild.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        skip: 10, // (3-1) * 5 = 10
-        take: 5
-      })
-    );
-  });
-
-  it('should handle database errors', async () => {
-    // Arrange
-    mockPrismaService.organizationChild.findMany.mockRejectedValue(
-      new Error('Database error')
-    );
-
-    // Act & Assert
-    await expect(service.findAll({})).rejects.toThrow(
-      new HttpException(
-        'Error fetching organizations',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      )
-    );
-  });
-
-  it('should filter out archived organizations', async () => {
-    // Arrange
-    mockPrismaService.organizationChild.findMany.mockResolvedValue(mockOrganizations);
-
-    // Act
-    await service.findAll({});
-
-    // Assert
-    expect(mockPrismaService.organizationChild.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          isArchived: false
-        })
-      })
-    );
-  });
-});
-
-describe('findAllOrganizationsWithoutFilters', () => {
-  const mockOrganizations = [
-    { id: 'org_1', name: 'Organization 1', isArchived: false },
-    { id: 'org_2', name: 'Organization 2', isArchived: false }
-  ];
-
-  it('should return all active organizations without filters', async () => {
-    // Arrange
-    mockPrismaService.organizationChild.findMany.mockResolvedValue(mockOrganizations);
-
-    // Act
-    const result = await service.findAllOrganizationsWithoutFilters();
-
-    // Assert
-    expect(mockPrismaService.organizationChild.findMany).toHaveBeenCalledWith({
-      where: { isArchived: false }
-    });
-
-    expect(result).toEqual({
-      message: 'Organizations fetched successfully',
-      data: mockOrganizations
-    });
-  });
-
-  it('should handle database errors', async () => {
-    // Arrange
-    mockPrismaService.organizationChild.findMany.mockRejectedValue(
-      new Error('Database error')
-    );
-
-    // Act & Assert
-    await expect(service.findAllOrganizationsWithoutFilters()).rejects.toThrow(
-      new HttpException(
-        'Error fetching organizations',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      )
-    );
-  });
-
-  it('should exclude archived organizations', async () => {
-    // Arrange
-    mockPrismaService.organizationChild.findMany.mockResolvedValue([]);
-
-    // Act
-    await service.findAllOrganizationsWithoutFilters();
-
-    // Assert
-    expect(mockPrismaService.organizationChild.findMany).toHaveBeenCalledWith({
-      where: { isArchived: false }
-    });
-  });
-});
-
-describe('findAllByOrganizationParent', () => {
-  const parentId = 'parent_123';
-  const mockOrganizationGroups = [
-    {
-      organizationChild: {
-        id: 'org_1',
-        name: 'Child Org 1',
-        organizationParents: [],
-        events: []
-      }
-    },
-    {
-      organizationChild: {
-        id: 'org_2',
-        name: 'Child Org 2',
-        organizationParents: [],
-        events: []
-      }
-    }
-  ];
-
-  it('should return organizations by parent with pagination', async () => {
-    // Arrange
-    const query = { page: 2, limit: 5 };
-    mockPrismaService.organizationGroup.findMany.mockResolvedValue(mockOrganizationGroups);
-
-    // Act
-    const result = await service.findAllByOrganizationParent(parentId, query);
-
-    // Assert
-    expect(mockPrismaService.organizationGroup.findMany).toHaveBeenCalledWith({
-      where: {
-        organizationParentId: parentId,
-        organizationChild: { isArchived: false }
-      },
-      skip: 5, // (2-1) * 5
-      take: 5,
-      include: {
-        organizationChild: {
-          include: {
-            organizationParents: true,
-            events: {
-              include: {
-                registrations: true,
-                ticketCategories: true,
-              },
-            },
-          }
-        }
-      }
-    });
-
-    expect(result).toBe(mockOrganizationGroups);
-  });
-
-  it('should use default pagination when not provided', async () => {
-    // Arrange
-    mockPrismaService.organizationGroup.findMany.mockResolvedValue([]);
-
-    // Act
-    await service.findAllByOrganizationParent(parentId, {});
-
-    // Assert
-    expect(mockPrismaService.organizationGroup.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        skip: 0,
-        take: 10
-      })
-    );
-  });
-
-  it('should handle database errors', async () => {
-    // Arrange
-    mockPrismaService.organizationGroup.findMany.mockRejectedValue(
-      new Error('Database error')
-    );
-
-    // Act & Assert
-    await expect(service.findAllByOrganizationParent(parentId, {})).rejects.toThrow(
-      new HttpException(
-        'Error fetching organizations',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      )
-    );
-  });
-
-  it('should filter out archived organizations in nested query', async () => {
-    // Arrange
-    mockPrismaService.organizationGroup.findMany.mockResolvedValue([]);
-
-    // Act
-    await service.findAllByOrganizationParent(parentId, {});
-
-    // Assert
-    expect(mockPrismaService.organizationGroup.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          organizationChild: { isArchived: false }
-        })
-      })
-    );
-  });
-});
-
-describe('findOneById', () => {
-  const orgId = 'org_123';
-  const mockOrganization = {
-    id: orgId,
-    name: 'Test Organization',
-    organizationParents: [],
-    events: []
-  };
-
-  it('should return organization by id', async () => {
-    // Arrange
-    mockPrismaService.organizationChild.findUnique.mockResolvedValue(mockOrganization);
-
-    // Act
-    const result = await service.findOneById(orgId);
-
-    // Assert
-    expect(mockPrismaService.organizationChild.findUnique).toHaveBeenCalledWith({
-      where: { id: orgId },
-      include: {
-        organizationParents: true,
-        events: {
-          include: {
-            registrations: true,
-            ticketCategories: true,
-          },
-        },
-      }
-    });
-
-    expect(result).toBe(mockOrganization);
-  });
-
-  it('should throw HttpException when organization not found', async () => {
-  // Arrange
-  mockPrismaService.organizationChild.findUnique.mockResolvedValue(null);
-
-  // Act
-  const findPromise = service.findOneById('nonexistent');
-
-  // Assert
-  await expect(findPromise).rejects.toThrow(
-    new HttpException('Organization not found', HttpStatus.NOT_FOUND)
-  );
-});
-
-  it('should include all necessary relationships', async () => {
-    // Arrange
-    mockPrismaService.organizationChild.findUnique.mockResolvedValue(mockOrganization);
-
-    // Act
-    await service.findOneById(orgId);
-
-    // Assert
-    expect(mockPrismaService.organizationChild.findUnique).toHaveBeenCalledWith(
-      expect.objectContaining({
+  describe('archiveOrganizationChild', () => {
+    it('should archive organization successfully', async () => {
+      // Arrange
+      const orgId = 'org_123';
+      const existingOrg = {
+        id: orgId,
+        name: 'Test Org',
+        isArchived: false,
+      };
+      const archivedOrg = { ...existingOrg, isArchived: true };
+
+      // Mock findOneById (not findFirst)
+      mockPrismaService.organizationChild.findUnique.mockResolvedValue(
+        existingOrg,
+      );
+      mockPrismaService.organizationChild.update.mockResolvedValue(archivedOrg);
+
+      // Act
+      const result = await service.archiveOrganizationChild(orgId);
+
+      // Assert
+      expect(
+        mockPrismaService.organizationChild.findUnique,
+      ).toHaveBeenCalledWith({
+        where: { id: orgId },
         include: {
           organizationParents: true,
           events: {
@@ -972,93 +292,1145 @@ describe('findOneById', () => {
               ticketCategories: true,
             },
           },
-        }
-      })
-    );
+        },
+      });
+
+      expect(mockPrismaService.organizationChild.update).toHaveBeenCalledWith({
+        where: { id: orgId },
+        data: { isArchived: true },
+      });
+
+      // Check the structured response
+      expect(result).toEqual({
+        message: 'Organization archived successfully',
+        data: archivedOrg,
+        statusCode: HttpStatus.OK,
+      });
+    });
+
+    it('should throw HttpException when organization does not exist for archive', async () => {
+      // Arrange
+      const orgId = 'nonexistent';
+      mockPrismaService.organizationChild.findUnique.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(service.archiveOrganizationChild(orgId)).rejects.toThrow(
+        new HttpException('Organization not found', HttpStatus.NOT_FOUND),
+      );
+
+      expect(mockPrismaService.organizationChild.update).not.toHaveBeenCalled();
+    });
+
+    it('should handle database errors during archive', async () => {
+      // Arrange
+      const orgId = 'org_123';
+      const existingOrg = { id: orgId, isArchived: false };
+
+      mockPrismaService.organizationChild.findUnique.mockResolvedValue(
+        existingOrg,
+      );
+      mockPrismaService.organizationChild.update.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      // Act & Assert
+      await expect(service.archiveOrganizationChild(orgId)).rejects.toThrow(
+        new HttpException(
+          'Failed to archive organization',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+    });
   });
-});
 
-describe('findArchivedOrganizations', () => {
-  const mockArchivedOrganizations = [
-    {
-      id: 'archived_org_1',
-      name: 'Archived Organization 1',
-      isArchived: true,
-      organizationParents: [],
-      events: []
-    }
-  ];
+  describe('unarchiveOrganizationChild', () => {
+    it('should unarchive organization successfully', async () => {
+      // Arrange
+      const orgId = 'org_123';
+      const existingOrg = {
+        id: orgId,
+        name: 'Test Org',
+        isArchived: true,
+      };
+      const unarchivedOrg = { ...existingOrg, isArchived: false };
 
-  it('should return archived organizations with pagination', async () => {
-    // Arrange
-    const query = { page: 1, limit: 5, searchFilter: 'archived', orderBy: 'desc' as 'asc' | 'desc' };
-    mockPrismaService.organizationChild.findMany.mockResolvedValue(mockArchivedOrganizations);
+      mockPrismaService.organizationChild.findUnique.mockResolvedValue(
+        existingOrg,
+      );
+      mockPrismaService.organizationChild.update.mockResolvedValue(
+        unarchivedOrg,
+      );
 
-    // Act
-    const result = await service.findArchivedOrganizations(query);
+      // Act
+      const result = await service.unarchiveOrganizationChild(orgId);
 
-    // Assert
-    expect(mockPrismaService.organizationChild.findMany).toHaveBeenCalledWith({
-      where: {
-        OR: [
-          { name: { contains: 'archived', mode: 'insensitive' } },
-          { acronym: { contains: 'archived', mode: 'insensitive' } }
-        ],
-        isArchived: true
-      },
-      skip: 0,
-      take: 5,
-      orderBy: { name: 'desc' },
-      include: {
-        organizationParents: true,
-        events: {
-          include: {
-            registrations: true,
-            ticketCategories: true,
+      // Assert
+      expect(
+        mockPrismaService.organizationChild.findUnique,
+      ).toHaveBeenCalledWith({
+        where: { id: orgId },
+        include: {
+          organizationParents: true,
+          events: {
+            include: {
+              registrations: true,
+              ticketCategories: true,
+            },
           },
         },
-      }
+      });
+
+      expect(mockPrismaService.organizationChild.update).toHaveBeenCalledWith({
+        where: { id: orgId },
+        data: { isArchived: false },
+      });
+
+      expect(result).toEqual({
+        message: 'Organization unarchived successfully',
+        data: unarchivedOrg,
+        statusCode: HttpStatus.OK,
+      });
     });
 
-    expect(result).toEqual({
-      message: 'Archived organizations fetched successfully',
-      data: mockArchivedOrganizations,
-      page: 1,
-      limit: 5
+    it('should throw HttpException when organization does not exist for unarchive', async () => {
+      // Arrange
+      const orgId = 'nonexistent';
+      mockPrismaService.organizationChild.findUnique.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(service.unarchiveOrganizationChild(orgId)).rejects.toThrow(
+        new HttpException('Organization not found', HttpStatus.NOT_FOUND),
+      );
+
+      expect(mockPrismaService.organizationChild.update).not.toHaveBeenCalled();
+    });
+
+    it('should handle database errors during unarchive', async () => {
+      // Arrange
+      const orgId = 'org_123';
+      const existingOrg = { id: orgId, isArchived: true };
+
+      mockPrismaService.organizationChild.findUnique.mockResolvedValue(
+        existingOrg,
+      );
+      mockPrismaService.organizationChild.update.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      // Act & Assert
+      await expect(service.unarchiveOrganizationChild(orgId)).rejects.toThrow(
+        new HttpException(
+          'Failed to unarchive organization',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
     });
   });
 
-  it('should filter only archived organizations', async () => {
-    // Arrange
-    mockPrismaService.organizationChild.findMany.mockResolvedValue([]);
+  describe('updateArchiveStatus (private method via public methods)', () => {
+    it('should toggle archive status correctly', async () => {
+      // Test through both public methods to verify the private method works
+      const orgId = 'org_123';
+      const existingOrg = { id: orgId, isArchived: false };
 
-    // Act
-    await service.findArchivedOrganizations({});
+      // Test archiving
+      mockPrismaService.organizationChild.findUnique.mockResolvedValue(
+        existingOrg,
+      );
+      mockPrismaService.organizationChild.update.mockResolvedValue({
+        ...existingOrg,
+        isArchived: true,
+      });
 
-    // Assert
-    expect(mockPrismaService.organizationChild.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          isArchived: true
-        })
-      })
-    );
+      const archiveResult = await service.archiveOrganizationChild(orgId);
+      expect(archiveResult.message).toBe('Organization archived successfully');
+
+      // Reset mocks for unarchive test
+      jest.clearAllMocks();
+
+      // Test unarchiving
+      mockPrismaService.organizationChild.findUnique.mockResolvedValue({
+        ...existingOrg,
+        isArchived: true,
+      });
+      mockPrismaService.organizationChild.update.mockResolvedValue({
+        ...existingOrg,
+        isArchived: false,
+      });
+
+      const unarchiveResult = await service.unarchiveOrganizationChild(orgId);
+      expect(unarchiveResult.message).toBe(
+        'Organization unarchived successfully',
+      );
+    });
   });
 
-  it('should handle database errors', async () => {
-    // Arrange
-    mockPrismaService.organizationChild.findMany.mockRejectedValue(
-      new Error('Database error')
-    );
+  describe('update', () => {
+    const orgId = 'org_123';
+    const updateDto: UpdateOrganizationDto = {
+      name: 'Updated Organization Name',
+      acronym: 'UON',
+      description: 'Updated description',
+      facebook: 'https://facebook.com/updated',
+    };
 
-    // Act & Assert
-    await expect(service.findArchivedOrganizations({})).rejects.toThrow(
-      new HttpException(
-        'Error fetching archived organizations',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      )
-    );
+    const existingOrganization = {
+      id: orgId,
+      name: 'Original Organization',
+      acronym: 'OO',
+      description: 'Original description',
+      isArchived: false,
+      userId: 'user_123',
+      user: {
+        id: 'user_123',
+        email: 'org@example.com',
+        userType: UserType.ORGANIZATION,
+        isActive: true,
+      },
+      organizationParents: [],
+      events: [],
+    };
+
+    const updatedOrganization = {
+      ...existingOrganization,
+      ...updateDto,
+    };
+
+    it('should update organization successfully', async () => {
+      // Arrange
+      mockPrismaService.organizationChild.findUnique.mockResolvedValue(
+        existingOrganization,
+      );
+      mockPrismaService.organizationChild.update.mockResolvedValue(
+        updatedOrganization,
+      );
+
+      // Act
+      const result = await service.update(orgId, updateDto);
+
+      // Assert
+      expect(
+        mockPrismaService.organizationChild.findUnique,
+      ).toHaveBeenCalledWith({
+        where: { id: orgId },
+        include: {
+          organizationParents: true,
+          events: {
+            include: {
+              registrations: true,
+              ticketCategories: true,
+            },
+          },
+        },
+      });
+
+      expect(mockPrismaService.organizationChild.update).toHaveBeenCalledWith({
+        where: { id: orgId },
+        data: updateDto,
+      });
+
+      expect(result).toEqual({
+        message: 'Organization updated successfully',
+        data: updatedOrganization,
+        statusCode: HttpStatus.OK,
+      });
+    });
+
+    it('should throw HttpException when organization does not exist', async () => {
+      // Arrange
+      mockPrismaService.organizationChild.findUnique.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(service.update(orgId, updateDto)).rejects.toThrow(
+        new HttpException('Organization not found', HttpStatus.NOT_FOUND),
+      );
+
+      expect(mockPrismaService.organizationChild.update).not.toHaveBeenCalled();
+    });
+
+    it('should handle database errors during update', async () => {
+      // Arrange
+      mockPrismaService.organizationChild.findUnique.mockResolvedValue(
+        existingOrganization,
+      );
+      mockPrismaService.organizationChild.update.mockRejectedValue(
+        new Error('Database connection failed'),
+      );
+
+      // Act & Assert
+      await expect(service.update(orgId, updateDto)).rejects.toThrow(
+        new HttpException(
+          'Failed to update organization',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+    });
+
+    it('should handle Prisma known request errors during update', async () => {
+      // Arrange
+      mockPrismaService.organizationChild.findUnique.mockResolvedValue(
+        existingOrganization,
+      );
+
+      const prismaError = new Error('Prisma known error');
+      prismaError.name = 'PrismaClientKnownRequestError';
+      prismaError['code'] = 'P2025'; // Record not found
+
+      mockPrismaService.organizationChild.update.mockRejectedValue(prismaError);
+
+      // Act & Assert
+      await expect(service.update(orgId, updateDto)).rejects.toThrow(
+        new HttpException(
+          'Failed to update organization',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+    });
+
+    it('should update organization with partial data', async () => {
+      // Arrange
+      const partialUpdateDto: UpdateOrganizationDto = {
+        name: 'Partially Updated Name',
+      };
+
+      const partiallyUpdatedOrganization = {
+        ...existingOrganization,
+        name: 'Partially Updated Name',
+      };
+
+      mockPrismaService.organizationChild.findUnique.mockResolvedValue(
+        existingOrganization,
+      );
+      mockPrismaService.organizationChild.update.mockResolvedValue(
+        partiallyUpdatedOrganization,
+      );
+
+      // Act
+      const result = await service.update(orgId, partialUpdateDto);
+
+      // Assert
+      expect(mockPrismaService.organizationChild.update).toHaveBeenCalledWith({
+        where: { id: orgId },
+        data: partialUpdateDto,
+      });
+
+      expect(result.data.name).toBe('Partially Updated Name');
+      expect(result.message).toBe('Organization updated successfully');
+    });
+
+    it('should update organization with empty update data', async () => {
+      // Arrange
+      const emptyUpdateDto: UpdateOrganizationDto = {};
+
+      mockPrismaService.organizationChild.findUnique.mockResolvedValue(
+        existingOrganization,
+      );
+      mockPrismaService.organizationChild.update.mockResolvedValue(
+        existingOrganization,
+      );
+
+      // Act
+      const result = await service.update(orgId, emptyUpdateDto);
+
+      // Assert
+      expect(mockPrismaService.organizationChild.update).toHaveBeenCalledWith({
+        where: { id: orgId },
+        data: {},
+      });
+
+      expect(result.data).toEqual(existingOrganization);
+      expect(result.message).toBe('Organization updated successfully');
+    });
+
+    it('should re-throw HttpException errors without wrapping', async () => {
+      // Arrange
+      const customHttpException = new HttpException(
+        'Custom error',
+        HttpStatus.BAD_REQUEST,
+      );
+
+      mockPrismaService.organizationChild.findUnique.mockResolvedValue(
+        existingOrganization,
+      );
+      mockPrismaService.organizationChild.update.mockRejectedValue(
+        customHttpException,
+      );
+
+      // Act & Assert
+      await expect(service.update(orgId, updateDto)).rejects.toThrow(
+        customHttpException,
+      );
+    });
   });
-});
 
+  describe('findAll', () => {
+    const mockOrganizations = [
+      {
+        id: 'org_1',
+        name: 'Organization 1',
+        acronym: 'ORG1',
+        isArchived: false,
+        organizationParents: [],
+        events: [],
+      },
+      {
+        id: 'org_2',
+        name: 'Organization 2',
+        acronym: 'ORG2',
+        isArchived: false,
+        organizationParents: [],
+        events: [],
+      },
+    ];
+
+    it('should return paginated organizations successfully', async () => {
+      // Arrange
+      const query = {
+        page: 1,
+        limit: 10,
+        searchFilter: 'test',
+        orderBy: 'asc' as 'asc' | 'desc',
+      };
+      mockPrismaService.organizationChild.findMany.mockResolvedValue(
+        mockOrganizations,
+      );
+
+      // Act
+      const result = await service.findAll(query);
+
+      // Assert
+      expect(mockPrismaService.organizationChild.findMany).toHaveBeenCalledWith(
+        {
+          where: {
+            OR: [
+              { name: { contains: 'test', mode: 'insensitive' } },
+              { acronym: { contains: 'test', mode: 'insensitive' } },
+            ],
+            isArchived: false,
+          },
+          skip: 0,
+          take: 10,
+          orderBy: { name: 'asc' },
+          include: {
+            organizationParents: true,
+            events: {
+              include: {
+                registrations: true,
+                ticketCategories: true,
+              },
+            },
+          },
+        },
+      );
+
+      expect(result).toEqual({
+        message: 'Organizations fetched successfully',
+        data: mockOrganizations,
+        page: 1,
+        limit: 10,
+      });
+    });
+
+    it('should return organizations with default pagination when no query params provided', async () => {
+      // Arrange
+      mockPrismaService.organizationChild.findMany.mockResolvedValue(
+        mockOrganizations,
+      );
+
+      // Act
+      const result = await service.findAll({});
+
+      // Assert
+      expect(mockPrismaService.organizationChild.findMany).toHaveBeenCalledWith(
+        {
+          where: { isArchived: false },
+          skip: 0,
+          take: 10,
+          orderBy: { name: 'asc' },
+          include: {
+            organizationParents: true,
+            events: {
+              include: {
+                registrations: true,
+                ticketCategories: true,
+              },
+            },
+          },
+        },
+      );
+
+      expect(result.meta.currentPage).toBe(1);
+      expect(result.meta.limit).toBe(10);
+    });
+
+    it('should calculate correct pagination skip value', async () => {
+      // Arrange
+      const query = { page: 3, limit: 5 };
+      mockPrismaService.organizationChild.findMany.mockResolvedValue([]);
+
+      // Act
+      await service.findAll(query);
+
+      // Assert
+      expect(mockPrismaService.organizationChild.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skip: 10, // (3-1) * 5 = 10
+          take: 5,
+        }),
+      );
+    });
+
+    it('should handle database errors', async () => {
+      // Arrange
+      mockPrismaService.organizationChild.findMany.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      // Act & Assert
+      await expect(service.findAll({})).rejects.toThrow(
+        new HttpException(
+          'Error fetching organizations',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+    });
+
+    it('should filter out archived organizations', async () => {
+      // Arrange
+      mockPrismaService.organizationChild.findMany.mockResolvedValue(
+        mockOrganizations,
+      );
+
+      // Act
+      await service.findAll({});
+
+      // Assert
+      expect(mockPrismaService.organizationChild.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            isArchived: false,
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('findAllOrganizationsWithoutFilters', () => {
+    const mockOrganizations = [
+      { id: 'org_1', name: 'Organization 1', isArchived: false },
+      { id: 'org_2', name: 'Organization 2', isArchived: false },
+    ];
+
+    it('should return all active organizations without filters', async () => {
+      // Arrange
+      mockPrismaService.organizationChild.findMany.mockResolvedValue(
+        mockOrganizations,
+      );
+
+      // Act
+      const result = await service.findAllOrganizationsWithoutFilters();
+
+      // Assert
+      expect(mockPrismaService.organizationChild.findMany).toHaveBeenCalledWith(
+        {
+          where: { isArchived: false },
+        },
+      );
+
+      expect(result).toEqual({
+        message: 'Organizations fetched successfully',
+        data: mockOrganizations,
+      });
+    });
+
+    it('should handle database errors', async () => {
+      // Arrange
+      mockPrismaService.organizationChild.findMany.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      // Act & Assert
+      await expect(
+        service.findAllOrganizationsWithoutFilters(),
+      ).rejects.toThrow(
+        new HttpException(
+          'Error fetching organizations',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+    });
+
+    it('should exclude archived organizations', async () => {
+      // Arrange
+      mockPrismaService.organizationChild.findMany.mockResolvedValue([]);
+
+      // Act
+      await service.findAllOrganizationsWithoutFilters();
+
+      // Assert
+      expect(mockPrismaService.organizationChild.findMany).toHaveBeenCalledWith(
+        {
+          where: { isArchived: false },
+        },
+      );
+    });
+  });
+
+  describe('findAllByOrganizationParent', () => {
+    const parentId = 'parent_123';
+    const mockOrganizationGroups = [
+      {
+        organizationChild: {
+          id: 'org_1',
+          name: 'Child Org 1',
+          organizationParents: [],
+          events: [],
+        },
+      },
+      {
+        organizationChild: {
+          id: 'org_2',
+          name: 'Child Org 2',
+          organizationParents: [],
+          events: [],
+        },
+      },
+    ];
+
+    it('should return organizations by parent with pagination', async () => {
+      // Arrange
+      const query = { page: 2, limit: 5 };
+      mockPrismaService.organizationGroup.findMany.mockResolvedValue(
+        mockOrganizationGroups,
+      );
+
+      // Act
+      const result = await service.findAllByOrganizationParent(parentId, query);
+
+      // Assert
+      expect(mockPrismaService.organizationGroup.findMany).toHaveBeenCalledWith(
+        {
+          where: {
+            organizationParentId: parentId,
+            organizationChild: { isArchived: false },
+          },
+          skip: 5, // (2-1) * 5
+          take: 5,
+          include: {
+            organizationChild: {
+              include: {
+                organizationParents: true,
+                events: {
+                  include: {
+                    registrations: true,
+                    ticketCategories: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      );
+
+      expect(result).toBe(mockOrganizationGroups);
+    });
+
+    it('should use default pagination when not provided', async () => {
+      // Arrange
+      mockPrismaService.organizationGroup.findMany.mockResolvedValue([]);
+
+      // Act
+      await service.findAllByOrganizationParent(parentId, {});
+
+      // Assert
+      expect(mockPrismaService.organizationGroup.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skip: 0,
+          take: 10,
+        }),
+      );
+    });
+
+    it('should handle database errors', async () => {
+      // Arrange
+      mockPrismaService.organizationGroup.findMany.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      // Act & Assert
+      await expect(
+        service.findAllByOrganizationParent(parentId, {}),
+      ).rejects.toThrow(
+        new HttpException(
+          'Error fetching organizations',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+    });
+
+    it('should filter out archived organizations in nested query', async () => {
+      // Arrange
+      mockPrismaService.organizationGroup.findMany.mockResolvedValue([]);
+
+      // Act
+      await service.findAllByOrganizationParent(parentId, {});
+
+      // Assert
+      expect(mockPrismaService.organizationGroup.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            organizationChild: { isArchived: false },
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('findOneById', () => {
+    const orgId = 'org_123';
+    const mockOrganization = {
+      id: orgId,
+      name: 'Test Organization',
+      organizationParents: [],
+      events: [],
+    };
+
+    it('should return organization by id', async () => {
+      // Arrange
+      mockPrismaService.organizationChild.findUnique.mockResolvedValue(
+        mockOrganization,
+      );
+
+      // Act
+      const result = await service.findOneById(orgId);
+
+      // Assert
+      expect(
+        mockPrismaService.organizationChild.findUnique,
+      ).toHaveBeenCalledWith({
+        where: { id: orgId },
+        include: {
+          organizationParents: true,
+          events: {
+            include: {
+              registrations: true,
+              ticketCategories: true,
+            },
+          },
+        },
+      });
+
+      expect(result).toBe(mockOrganization);
+    });
+
+    it('should throw HttpException when organization not found', async () => {
+      // Arrange
+      mockPrismaService.organizationChild.findUnique.mockResolvedValue(null);
+
+      // Act
+      const findPromise = service.findOneById('nonexistent');
+
+      // Assert
+      await expect(findPromise).rejects.toThrow(
+        new HttpException('Organization not found', HttpStatus.NOT_FOUND),
+      );
+    });
+
+    it('should include all necessary relationships', async () => {
+      // Arrange
+      mockPrismaService.organizationChild.findUnique.mockResolvedValue(
+        mockOrganization,
+      );
+
+      // Act
+      await service.findOneById(orgId);
+
+      // Assert
+      expect(
+        mockPrismaService.organizationChild.findUnique,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: {
+            organizationParents: true,
+            events: {
+              include: {
+                registrations: true,
+                ticketCategories: true,
+              },
+            },
+          },
+        }),
+      );
+    });
+  });
+
+  describe('findArchivedOrganizations', () => {
+    const mockArchivedOrganizations = [
+      {
+        id: 'archived_org_1',
+        name: 'Archived Organization 1',
+        isArchived: true,
+        organizationParents: [],
+        events: [],
+      },
+    ];
+
+    it('should return archived organizations with pagination', async () => {
+      // Arrange
+      const query = {
+        page: 1,
+        limit: 5,
+        searchFilter: 'archived',
+        orderBy: 'desc' as 'asc' | 'desc',
+      };
+      mockPrismaService.organizationChild.findMany.mockResolvedValue(
+        mockArchivedOrganizations,
+      );
+
+      // Act
+      const result = await service.findArchivedOrganizations(query);
+
+      // Assert
+      expect(mockPrismaService.organizationChild.findMany).toHaveBeenCalledWith(
+        {
+          where: {
+            OR: [
+              { name: { contains: 'archived', mode: 'insensitive' } },
+              { acronym: { contains: 'archived', mode: 'insensitive' } },
+            ],
+            isArchived: true,
+          },
+          skip: 0,
+          take: 5,
+          orderBy: { name: 'desc' },
+          include: {
+            organizationParents: true,
+            events: {
+              include: {
+                registrations: true,
+                ticketCategories: true,
+              },
+            },
+          },
+        },
+      );
+
+      expect(result).toEqual({
+        message: 'Archived organizations fetched successfully',
+        data: mockArchivedOrganizations,
+        page: 1,
+        limit: 5,
+      });
+    });
+
+    it('should filter only archived organizations', async () => {
+      // Arrange
+      mockPrismaService.organizationChild.findMany.mockResolvedValue([]);
+
+      // Act
+      await service.findArchivedOrganizations({});
+
+      // Assert
+      expect(mockPrismaService.organizationChild.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            isArchived: true,
+          }),
+        }),
+      );
+    });
+
+    it('should handle database errors', async () => {
+      // Arrange
+      mockPrismaService.organizationChild.findMany.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      // Act & Assert
+      await expect(service.findArchivedOrganizations({})).rejects.toThrow(
+        new HttpException(
+          'Error fetching archived organizations',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+    });
+  });
+
+  describe('updateOrganizationIcon', () => {
+    const mockFile = {
+      buffer: Buffer.from('fake-image-data'),
+      originalname: 'test-icon.jpg',
+      mimetype: 'image/jpeg',
+      size: 1024,
+    } as Express.Multer.File;
+
+    const mockOrganization = {
+      id: 'org-123',
+      name: 'Test Organization',
+      icon: null,
+    };
+
+    const mockUploadResult = {
+      url: 'https://storage.example.com/organization-icon/12345-abc.jpg',
+      key: 'organization-icons/12345-abc.jpg',
+      bucket: 'organization-icon',
+    };
+
+    beforeEach(() => {
+      // Set environment variables
+      process.env.ORGANIZATION_ICON_BUCKET = 'organization-icon';
+      process.env.AWS_ASSETS_BUCKET_NAME = 'fallback-bucket';
+    });
+
+    afterEach(() => {
+      delete process.env.ORGANIZATION_ICON_BUCKET;
+      delete process.env.AWS_ASSETS_BUCKET_NAME;
+    });
+
+    it('should successfully upload organization icon', async () => {
+      // Arrange
+      jest
+        .spyOn(service, 'findOneById')
+        .mockResolvedValue(mockOrganization as any);
+      mockS3Service.uploadFile.mockResolvedValue(mockUploadResult);
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return await callback(mockPrismaService);
+      });
+      mockPrismaService.organizationChild.update.mockResolvedValue({
+        ...mockOrganization,
+        icon: mockUploadResult.url,
+      });
+
+      // Act
+      const result = await service.updateOrganizationIcon('org-123', mockFile);
+
+      // Assert
+      expect(service.findOneById).toHaveBeenCalledWith('org-123');
+      expect(mockS3Service.uploadFile).toHaveBeenCalledWith({
+        buffer: mockFile.buffer,
+        fileName: mockFile.originalname,
+        folder: 'organization-icons',
+        contentType: mockFile.mimetype,
+        bucketName: 'organization-icon',
+      });
+      expect(mockPrismaService.organizationChild.update).toHaveBeenCalledWith({
+        where: { id: 'org-123' },
+        data: { icon: mockUploadResult.url },
+      });
+      expect(result).toEqual({
+        message: 'Organization icon updated successfully',
+        organization: { ...mockOrganization, icon: mockUploadResult.url },
+      });
+    });
+
+    it('should use fallback bucket when ORGANIZATION_ICON_BUCKET is not set', async () => {
+      // Arrange
+      delete process.env.ORGANIZATION_ICON_BUCKET;
+      process.env.UPLOADS_BUCKET = 'uploads';
+      jest
+        .spyOn(service, 'findOneById')
+        .mockResolvedValue(mockOrganization as any);
+      mockS3Service.uploadFile.mockResolvedValue(mockUploadResult);
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return await callback(mockPrismaService);
+      });
+      mockPrismaService.organizationChild.update.mockResolvedValue({
+        ...mockOrganization,
+        icon: mockUploadResult.url,
+      });
+
+      // Act
+      await service.updateOrganizationIcon('org-123', mockFile);
+
+      // Assert
+      expect(mockS3Service.uploadFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bucketName: 'uploads',
+        }),
+      );
+    });
+
+    it('should throw NOT_FOUND when organization does not exist', async () => {
+      // Arrange
+      jest.spyOn(service, 'findOneById').mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(
+        service.updateOrganizationIcon('non-existent-id', mockFile),
+      ).rejects.toThrow(
+        new HttpException('Organization not found', HttpStatus.NOT_FOUND),
+      );
+
+      expect(mockS3Service.uploadFile).not.toHaveBeenCalled();
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('should throw INTERNAL_SERVER_ERROR when bucket is not configured', async () => {
+      // Arrange
+      delete process.env.ORGANIZATION_ICON_BUCKET;
+      delete process.env.UPLOADS_BUCKET;
+      jest
+        .spyOn(service, 'findOneById')
+        .mockResolvedValue(mockOrganization as any);
+
+      // Act & Assert
+      await expect(
+        service.updateOrganizationIcon('org-123', mockFile),
+      ).rejects.toThrow(
+        new HttpException(
+          'Storage bucket not configured',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+
+      expect(mockS3Service.uploadFile).not.toHaveBeenCalled();
+    });
+
+    it('should throw BAD_REQUEST when S3 upload returns null', async () => {
+      // Arrange
+      jest
+        .spyOn(service, 'findOneById')
+        .mockResolvedValue(mockOrganization as any);
+      mockS3Service.uploadFile.mockResolvedValue(null);
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return await callback(mockPrismaService);
+      });
+
+      // Act & Assert
+      await expect(
+        service.updateOrganizationIcon('org-123', mockFile),
+      ).rejects.toThrow(
+        new HttpException(
+          'Failed to upload Organization icon',
+          HttpStatus.BAD_REQUEST,
+        ),
+      );
+    });
+
+    it('should throw BAD_REQUEST when S3 upload returns result without URL', async () => {
+      // Arrange
+      jest
+        .spyOn(service, 'findOneById')
+        .mockResolvedValue(mockOrganization as any);
+      mockS3Service.uploadFile.mockResolvedValue({
+        key: 'test-key',
+        bucket: 'test-bucket',
+      });
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return await callback(mockPrismaService);
+      });
+
+      // Act & Assert
+      await expect(
+        service.updateOrganizationIcon('org-123', mockFile),
+      ).rejects.toThrow(
+        new HttpException(
+          'Failed to upload Organization icon',
+          HttpStatus.BAD_REQUEST,
+        ),
+      );
+    });
+
+    it('should handle database update errors gracefully', async () => {
+      // Arrange
+      jest
+        .spyOn(service, 'findOneById')
+        .mockResolvedValue(mockOrganization as any);
+      mockS3Service.uploadFile.mockResolvedValue(mockUploadResult);
+      mockPrismaService.$transaction.mockRejectedValue(
+        new Error('Database connection failed'),
+      );
+
+      // Act & Assert
+      await expect(
+        service.updateOrganizationIcon('org-123', mockFile),
+      ).rejects.toThrow(
+        new HttpException(
+          'Database connection failed',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+    });
+
+    it('should preserve HttpException errors from transaction', async () => {
+      // Arrange
+      jest
+        .spyOn(service, 'findOneById')
+        .mockResolvedValue(mockOrganization as any);
+      const customError = new HttpException(
+        'Custom error',
+        HttpStatus.FORBIDDEN,
+      );
+      mockPrismaService.$transaction.mockRejectedValue(customError);
+
+      // Act & Assert
+      await expect(
+        service.updateOrganizationIcon('org-123', mockFile),
+      ).rejects.toThrow(customError);
+    });
+
+    it('should call S3 uploadFile with correct parameters for PNG file', async () => {
+      // Arrange
+      const pngFile = {
+        ...mockFile,
+        originalname: 'test-icon.png',
+        mimetype: 'image/png',
+      } as Express.Multer.File;
+
+      jest
+        .spyOn(service, 'findOneById')
+        .mockResolvedValue(mockOrganization as any);
+      mockS3Service.uploadFile.mockResolvedValue(mockUploadResult);
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return await callback(mockPrismaService);
+      });
+      mockPrismaService.organizationChild.update.mockResolvedValue({
+        ...mockOrganization,
+        icon: mockUploadResult.url,
+      });
+
+      // Act
+      await service.updateOrganizationIcon('org-123', pngFile);
+
+      // Assert
+      expect(mockS3Service.uploadFile).toHaveBeenCalledWith({
+        buffer: pngFile.buffer,
+        fileName: pngFile.originalname,
+        folder: 'organization-icons',
+        contentType: 'image/png',
+        bucketName: 'organization-icon',
+      });
+    });
+
+    it('should update organization with the returned URL from S3', async () => {
+      // Arrange
+      const customUrl = 'https://custom-cdn.com/org-icon.jpg';
+      const customUploadResult = {
+        ...mockUploadResult,
+        url: customUrl,
+      };
+
+      jest
+        .spyOn(service, 'findOneById')
+        .mockResolvedValue(mockOrganization as any);
+      mockS3Service.uploadFile.mockResolvedValue(customUploadResult);
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return await callback(mockPrismaService);
+      });
+      mockPrismaService.organizationChild.update.mockResolvedValue({
+        ...mockOrganization,
+        icon: customUrl,
+      });
+
+      // Act
+      const result = await service.updateOrganizationIcon('org-123', mockFile);
+
+      // Assert
+      expect(mockPrismaService.organizationChild.update).toHaveBeenCalledWith({
+        where: { id: 'org-123' },
+        data: { icon: customUrl },
+      });
+      expect(result.organization.icon).toBe(customUrl);
+    });
+  });
 });

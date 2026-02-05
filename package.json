@@ -16,8 +16,11 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBatch",
     "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:s3": "jest --config ./test/jest-e2e.json --testPathPattern=s3-integration",
+    "test:s3-manual": "ts-node scripts/test-s3-connection.ts",
+    "test:s3-production": "ts-node scripts/test-production-s3.ts",
     "seed": "prisma db seed"
   },
   "prisma": {
