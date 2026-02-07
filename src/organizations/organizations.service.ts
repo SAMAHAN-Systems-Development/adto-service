@@ -30,18 +30,19 @@ export class OrganizationsService {
   } as const;
 
   async create(createOrganizationDto: CreateOrganizationDto) {
-    const { email, password, ...organizationData } = createOrganizationDto;
+    const { email, password, organizationParentId, ...organizationData } =
+      createOrganizationDto;
 
-    if (!organizationData.name || !email) {
+    if (!organizationData.name || !email || !password) {
       throw new HttpException(
-        'Name and email are required fields',
+        'Name, email and password are required fields',
         HttpStatus.BAD_REQUEST,
       );
     }
     try {
       return await this.prisma.$transaction(async (prisma) => {
         let userId = null;
-        if (email && password) {
+        if (email) {
           const salt = await bcrypt.genSalt(10);
           const hashedPassword = await bcrypt.hash(password, salt);
 
@@ -60,6 +61,13 @@ export class OrganizationsService {
           data: {
             ...organizationData,
             userId,
+            ...(organizationParentId && {
+              organizationParents: {
+                create: {
+                  organizationParentId: organizationParentId,
+                },
+              },
+            }),
           },
           include: {
             user: {
@@ -77,6 +85,13 @@ export class OrganizationsService {
             },
           },
         });
+
+        if (userId) {
+          await prisma.user.update({
+            where: { id: userId },
+            data: { organizationId: createdOrganization.id },
+          });
+        }
 
         return {
           message: 'Organization created successfully',
@@ -232,6 +247,7 @@ export class OrganizationsService {
         id,
       },
       include: {
+        user: true,
         organizationParents: true,
         events: {
           include: {
@@ -249,21 +265,56 @@ export class OrganizationsService {
   }
 
   async update(id: string, updateOrganizationDto: UpdateOrganizationDto) {
-    await this.findOneById(id);
+    const organization = await this.findOneById(id);
+    const { email, password, organizationParentId, ...organizationData } =
+      updateOrganizationDto;
 
     try {
-      const updatedOrganization = await this.prisma.organizationChild.update({
-        where: {
-          id,
-        },
-        data: updateOrganizationDto,
-      });
+      return await this.prisma.$transaction(async (prisma) => {
+        // Update user if email or password is provided
+        if (organization.userId && (email || password)) {
+          const userData: any = {};
+          if (email) userData.email = email;
+          if (password) {
+            const salt = await bcrypt.genSalt(10);
+            userData.password = await bcrypt.hash(password, salt);
+          }
 
-      return {
-        message: 'Organization updated successfully',
-        data: updatedOrganization,
-        statusCode: HttpStatus.OK,
-      };
+          await prisma.user.update({
+            where: { id: organization.userId },
+            data: userData,
+          });
+        }
+
+        // Handle organization parent update
+        if (organizationParentId) {
+          // Delete existing relations first
+          await prisma.organizationGroup.deleteMany({
+            where: { organizationChildId: id },
+          });
+
+          await prisma.organizationGroup.create({
+            data: {
+              organizationChildId: id,
+              organizationParentId: organizationParentId,
+            },
+          });
+        }
+
+        const updatedOrganization = await prisma.organizationChild.update({
+          where: {
+            id,
+          },
+          data: organizationData,
+          include: this.getOrganizationIncludes(),
+        });
+
+        return {
+          message: 'Organization updated successfully',
+          data: updatedOrganization,
+          statusCode: HttpStatus.OK,
+        };
+      });
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -406,7 +457,19 @@ export class OrganizationsService {
 
   private getOrganizationIncludes(): Prisma.OrganizationChildInclude {
     return {
-      organizationParents: true,
+      user: {
+        select: {
+          id: true,
+          email: true,
+          userType: true,
+          isActive: true,
+        },
+      },
+      organizationParents: {
+        include: {
+          organizationParent: true,
+        },
+      },
       events: {
         include: {
           TicketCategories: true,

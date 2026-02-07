@@ -73,14 +73,15 @@ export class EventsService {
 
     const skip = (page - 1) * limit;
 
-    const effectiveOrgId =
-      role === UserType.ORGANIZATION && orgId ? orgId : organizationId;
-
     const where: Prisma.EventWhereInput = {
       ...(isRegistrationOpen && { isRegistrationOpen }),
       ...(isRegistrationRequired && { isRegistrationRequired }),
       ...(isOpenToOutsiders && { isOpenToOutsiders }),
-      ...(effectiveOrgId && { orgId: effectiveOrgId }),
+      ...(role === UserType.ORGANIZATION
+        ? { orgId: orgId || 'FORBIDDEN' }
+        : organizationId
+          ? { orgId: organizationId }
+          : {}),
       ...(organizationParentId && {
         org: {
           organizationParents: {
