@@ -116,6 +116,23 @@ export class EventTicketsService {
     };
   }
 
+  async findAllPublic(query: { eventId?: string }) {
+    const [tickets] = await Promise.all([
+      this.prisma.ticketCategory.findMany({
+        where: query.eventId
+          ? {
+              eventId: query.eventId,
+            }
+          : {},
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    return {
+      data: tickets,
+    };
+  }
+
   async findOne(id: string, orgId: string) {
     this.ensureOrgId(orgId);
     const ticket = await this.prisma.ticketCategory.findUnique({

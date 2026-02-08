@@ -14,6 +14,7 @@ import { EventTicketsService } from './event-tickets.service';
 import { CreateEventTicketDto } from './dto/create-event-ticket.dto';
 import { UpdateEventTicketDto } from './dto/update-event-ticket.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { Public } from 'src/auth/public.decorator';
 import { Roles } from 'src/auth/roles.decorator';
 import { UserType } from '@prisma/client';
 
@@ -40,6 +41,17 @@ export class EventTicketsController {
     return this.eventTicketsService.findAll(req.user.orgId, {
       page: Number(page) || 1,
       limit: Number(limit) || 10,
+      eventId,
+    });
+  }
+
+  @Public()
+  @Get('public')
+  @UseGuards(AuthGuard)
+  findAllPublic(
+    @Query('eventId') eventId?: string,
+  ) {
+    return this.eventTicketsService.findAllPublic({
       eventId,
     });
   }
