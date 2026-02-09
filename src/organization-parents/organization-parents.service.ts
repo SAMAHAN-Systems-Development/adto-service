@@ -30,15 +30,26 @@ export class OrganizationParentsService {
   }
 
   async findAll() {
-    const organizationParents = await this.prisma.organizationParent.findMany();
+    const organizationParents = await this.prisma.organizationParent.findMany({
+      include: {
+        _count: {
+          select: {
+            organizationChildren: true,
+          },
+        },
+      },
+    });
 
-    if (!organizationParents) {
+    if (!organizationParents || organizationParents.length === 0) {
       return {
         message: 'No organization parents found',
       };
     }
 
-    return organizationParents;
+    return organizationParents.map(({ _count, ...parent }) => ({
+      ...parent,
+      orgCount: _count.organizationChildren,
+    }));
   }
 
   async findOne(id: string) {
@@ -46,10 +57,28 @@ export class OrganizationParentsService {
       const organizationParent =
         await this.prisma.organizationParent.findUnique({
           where: { id },
+          include: {
+            _count: {
+              select: {
+                organizationChildren: true,
+              },
+            },
+          },
         });
 
-      return organizationParent;
+      if (!organizationParent) {
+        throw new NotFoundException('Organization parent not found');
+      }
+
+      const { _count, ...parent } = organizationParent;
+      return {
+        ...parent,
+        orgCount: _count.organizationChildren,
+      };
     } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       throw new InternalServerErrorException(error.message);
     }
   }
@@ -59,6 +88,17 @@ export class OrganizationParentsService {
     updateOrganizationParentDto: UpdateOrganizationParentDto,
   ) {
     try {
+      // First check if the organization parent exists
+      const existingOrgParent = await this.prisma.organizationParent.findUnique(
+        {
+          where: { id },
+        },
+      );
+
+      if (!existingOrgParent) {
+        throw new NotFoundException('Organization parent not found');
+      }
+
       const updatedOrgParent = await this.prisma.organizationParent.update({
         where: { id },
         data: {
@@ -71,6 +111,9 @@ export class OrganizationParentsService {
         data: updatedOrgParent,
       };
     } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       throw new InternalServerErrorException(error.message);
     }
   }

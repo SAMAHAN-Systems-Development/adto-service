@@ -9,6 +9,7 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       'http://localhost:3000',
+      'http://localhost:3001',
       'https://adto-client-ten.vercel.app',
       'https://adto-admin-ten.vercel.app',
     ],
