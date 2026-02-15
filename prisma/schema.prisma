@@ -98,6 +98,7 @@ model TicketCategory {
   id                   String         @id @default(cuid())
   name                 String
   description          String
+  thumbnail            String?          // Ticket thumbnail image URL
   price                Float
   capacity             Int
   registrationDeadline DateTime
@@ -112,6 +113,8 @@ model Event {
   id                     String               @id @default(cuid())
   name                   String
   description            String
+  banner                 String?              // Event banner image URL
+  thumbnail              String?              // Event thumbnail image URL
   dateStart              DateTime
   dateEnd                DateTime
   isRegistrationOpen     Boolean              @default(false) // Registration can be published but not open
