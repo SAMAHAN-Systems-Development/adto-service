@@ -33,4 +33,12 @@ export class CreateEventDto {
   @IsBoolean()
   @IsOptional()
   isOpenToOutsiders?: boolean;
+
+  @IsString()
+  @IsOptional()
+  banner?: string;
+
+  @IsString()
+  @IsOptional()
+  thumbnail?: string;
 }
