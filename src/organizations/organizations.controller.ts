@@ -20,7 +20,7 @@ import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from 'src/auth/auth.guard';
-import { Public } from 'src/auth/public.decorator'; 
+import { Public } from 'src/auth/public.decorator';
 
 @Controller('organizations')
 export class OrganizationsController {
@@ -32,7 +32,6 @@ export class OrganizationsController {
     return this.organizationsService.create(createOrganizationDto);
   }
 
-  
   @Get()
   findAll(
     @Query('page') page?: number,
@@ -73,7 +72,7 @@ export class OrganizationsController {
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          new MaxFileSizeValidator({ maxSize: 1000000 }),
+          new MaxFileSizeValidator({ maxSize: 10000000 }), // 10MB
           new FileTypeValidator({
             fileType: /(image\/jpeg|image\/png)/,
           }),

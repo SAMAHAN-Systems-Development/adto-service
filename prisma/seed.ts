@@ -7,7 +7,7 @@ async function main() {
   console.log(`Start seeding ...`);
 
   // --- Clear existing data ---
-  await prisma.portalRequests.deleteMany();
+  await prisma.ticketRequests.deleteMany();
   await prisma.registration.deleteMany();
   await prisma.ticketCategory.deleteMany();
   await prisma.eventAnnouncements.deleteMany();
