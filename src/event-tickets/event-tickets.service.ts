@@ -101,12 +101,27 @@ export class EventTicketsService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
+        include: {
+          ticketRequests: {
+            where: {
+              isApproved: true,
+            },
+            select: {
+              ticketLink: true,
+            },
+          },
+        },
       }),
       this.prisma.ticketCategory.count({ where }),
     ]);
 
+    const data = tickets.map(({ ticketRequests, ...ticket }) => ({
+      ...ticket,
+      ticketLinks: ticket.price > 0 ? ticketRequests.map((req) => req.ticketLink) : [],
+    }));
+
     return {
-      data: tickets,
+      data,
       meta: {
         totalCount,
         totalPages: Math.ceil(totalCount / limit),
@@ -125,11 +140,26 @@ export class EventTicketsService {
             }
           : {},
         orderBy: { createdAt: 'desc' },
+        include: {
+          ticketRequests: {
+            where: {
+              isApproved: true,
+            },
+            select: {
+              ticketLink: true,
+            },
+          },
+        },
       }),
     ]);
 
+    const data = tickets.map(({ ticketRequests, ...ticket }) => ({
+      ...ticket,
+      ticketLinks: ticket.price > 0 ? ticketRequests.map((req) => req.ticketLink) : [],
+    }));
+
     return {
-      data: tickets,
+      data,
     };
   }
 
@@ -139,6 +169,14 @@ export class EventTicketsService {
       where: { id },
       include: {
         event: true,
+        ticketRequests: {
+          where: {
+            isApproved: true,
+          },
+          select: {
+            ticketLink: true,
+          },
+        },
       },
     });
 
@@ -153,7 +191,13 @@ export class EventTicketsService {
       );
     }
 
-    return ticket;
+    const formattedTicket = {
+      ...ticket,
+      ticketRequests: undefined,
+      ticketLinks: ticket.price > 0 ? ticket.ticketRequests.map((req) => req.ticketLink) : [],
+    };
+
+    return formattedTicket;
   }
 
   async update(id: string, updateEventTicketDto: UpdateEventTicketDto, orgId: string) {
