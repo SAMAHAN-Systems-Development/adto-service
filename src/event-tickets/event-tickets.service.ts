@@ -103,6 +103,9 @@ export class EventTicketsService {
         orderBy: { createdAt: 'desc' },
         include: {
           ticketRequests: {
+            where: {
+              isApproved: true,
+            },
             select: {
               ticketLink: true,
             },
@@ -139,6 +142,9 @@ export class EventTicketsService {
         orderBy: { createdAt: 'desc' },
         include: {
           ticketRequests: {
+            where: {
+              isApproved: true,
+            },
             select: {
               ticketLink: true,
             },
@@ -164,6 +170,9 @@ export class EventTicketsService {
       include: {
         event: true,
         ticketRequests: {
+          where: {
+            isApproved: true,
+          },
           select: {
             ticketLink: true,
           },
@@ -186,7 +195,7 @@ export class EventTicketsService {
       ...ticket,
       ticketRequests: undefined,
       ticketLink: ticket.price > 0 ? (ticket.ticketRequests[0]?.ticketLink ?? null) : null,
-    }
+    };
 
     return formattedTicket;
   }
