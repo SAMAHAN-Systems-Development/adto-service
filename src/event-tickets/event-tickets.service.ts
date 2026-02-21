@@ -101,12 +101,24 @@ export class EventTicketsService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
+        include: {
+          ticketRequests: {
+            select: {
+              ticketLink: true,
+            },
+          },
+        },
       }),
       this.prisma.ticketCategory.count({ where }),
     ]);
 
+    const data = tickets.map(({ ticketRequests, ...ticket }) => ({
+      ...ticket,
+      ticketLink: ticket.price > 0 ? (ticketRequests[0]?.ticketLink ?? null) : null,
+    }));
+
     return {
-      data: tickets,
+      data,
       meta: {
         totalCount,
         totalPages: Math.ceil(totalCount / limit),
@@ -125,11 +137,23 @@ export class EventTicketsService {
             }
           : {},
         orderBy: { createdAt: 'desc' },
+        include: {
+          ticketRequests: {
+            select: {
+              ticketLink: true,
+            },
+          },
+        },
       }),
     ]);
 
+    const data = tickets.map(({ ticketRequests, ...ticket }) => ({
+      ...ticket,
+      ticketLink: ticket.price > 0 ? (ticketRequests[0]?.ticketLink ?? null) : null,
+    }));
+
     return {
-      data: tickets,
+      data,
     };
   }
 
@@ -139,6 +163,11 @@ export class EventTicketsService {
       where: { id },
       include: {
         event: true,
+        ticketRequests: {
+          select: {
+            ticketLink: true,
+          },
+        },
       },
     });
 
@@ -153,7 +182,13 @@ export class EventTicketsService {
       );
     }
 
-    return ticket;
+    const formattedTicket = {
+      ...ticket,
+      ticketRequests: undefined,
+      ticketLink: ticket.price > 0 ? (ticket.ticketRequests[0]?.ticketLink ?? null) : null,
+    }
+
+    return formattedTicket;
   }
 
   async update(id: string, updateEventTicketDto: UpdateEventTicketDto, orgId: string) {
