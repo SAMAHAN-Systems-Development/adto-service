@@ -117,7 +117,7 @@ export class EventTicketsService {
 
     const data = tickets.map(({ ticketRequests, ...ticket }) => ({
       ...ticket,
-      ticketLink: ticket.price > 0 ? (ticketRequests[0]?.ticketLink ?? null) : null,
+      ticketLinks: ticket.price > 0 ? ticketRequests.map((req) => req.ticketLink) : [],
     }));
 
     return {
@@ -155,7 +155,7 @@ export class EventTicketsService {
 
     const data = tickets.map(({ ticketRequests, ...ticket }) => ({
       ...ticket,
-      ticketLink: ticket.price > 0 ? (ticketRequests[0]?.ticketLink ?? null) : null,
+      ticketLinks: ticket.price > 0 ? ticketRequests.map((req) => req.ticketLink) : [],
     }));
 
     return {
@@ -194,7 +194,7 @@ export class EventTicketsService {
     const formattedTicket = {
       ...ticket,
       ticketRequests: undefined,
-      ticketLink: ticket.price > 0 ? (ticket.ticketRequests[0]?.ticketLink ?? null) : null,
+      ticketLinks: ticket.price > 0 ? ticket.ticketRequests.map((req) => req.ticketLink) : [],
     };
 
     return formattedTicket;
