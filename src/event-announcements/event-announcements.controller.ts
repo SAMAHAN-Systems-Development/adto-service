@@ -16,6 +16,7 @@ import { EventAnnouncementsService } from './event-announcements.service';
 import { CreateEventAnnouncementDto } from './dto/create-event-announcement.dto';
 import { UpdateEventAnnouncementDto } from './dto/update-event-announcement.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { Public } from 'src/auth/public.decorator';
 import { Roles } from 'src/auth/roles.decorator';
 import { UserType } from '@prisma/client';
 
@@ -49,6 +50,16 @@ export class EventAnnouncementsController {
       eventId,
       organizationId,
     });
+  }
+
+  @Public()
+  @Get('public')
+  findAllByEvent(
+    @Query('eventId') eventId?: string,
+  ) {
+    return this.eventAnnouncementsService.findAllByEvent(
+      eventId,
+    );
   }
 
   @Get(':id')

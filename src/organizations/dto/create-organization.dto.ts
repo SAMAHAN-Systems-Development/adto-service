@@ -12,8 +12,7 @@ export class CreateOrganizationDto {
   email: string;
 
   @IsString()
-  @IsOptional()
-  password?: string;
+  password: string;
 
   @IsOptional()
   @IsString()
@@ -46,4 +45,8 @@ export class CreateOrganizationDto {
   @IsOptional()
   @IsString()
   userId?: string;
+
+  @IsOptional()
+  @IsString()
+  organizationParentId?: string;
 }
