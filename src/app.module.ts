@@ -11,6 +11,7 @@ import { EventAnnouncementsModule } from './event-announcements/event-announceme
 import { EventTicketsModule } from './event-tickets/event-tickets.module';
 import { AssetsModule } from './assets/assets.module';
 import { S3Module } from './s3/s3.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 import { RegistrationsModule } from './registrations/registrations.module';
 import { TicketRequestsModule } from './ticket-requests/ticket-requests.module';
@@ -29,6 +30,7 @@ import { TicketRequestsModule } from './ticket-requests/ticket-requests.module';
     TicketRequestsModule,
     AssetsModule,
     S3Module,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],
