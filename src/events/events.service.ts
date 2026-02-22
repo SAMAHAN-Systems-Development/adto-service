@@ -118,6 +118,7 @@ export class EventsService {
         }),
     ...(role !== UserType.ADMIN && role !== UserType.ORGANIZATION && { isPublished: true }),
       deletedAt: null,
+      isArchived: false,
     };
 
     const events = await this.prisma.event.findMany({
