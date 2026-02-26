@@ -3,6 +3,7 @@ import {
   IsInt,
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsString,
   Min,
   Validate,
@@ -16,7 +17,11 @@ import { Type } from 'class-transformer';
 export class IsFutureDateConstraint implements ValidatorConstraintInterface {
   validate(value: string) {
     const parsed = new Date(value);
-    return parsed instanceof Date && !Number.isNaN(parsed.getTime()) && parsed > new Date();
+    return (
+      parsed instanceof Date &&
+      !Number.isNaN(parsed.getTime()) &&
+      parsed > new Date()
+    );
   }
 
   defaultMessage(args: ValidationArguments) {
@@ -34,7 +39,7 @@ export class CreateEventTicketDto {
   description: string;
 
   @Type(() => Number)
-  @IsNumber({allowNaN: false, maxDecimalPlaces: 2})
+  @IsNumber({ allowNaN: false, maxDecimalPlaces: 2 })
   @Min(0)
   price: number;
 
@@ -50,4 +55,8 @@ export class CreateEventTicketDto {
   @IsDateString()
   @Validate(IsFutureDateConstraint)
   registrationDeadline: string;
+
+  @IsString()
+  @IsOptional()
+  thumbnail?: string;
 }

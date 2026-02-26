@@ -6,9 +6,7 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class EventTicketsService {
-  constructor(
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   private ensureFutureDate(date: string) {
     const parsed = new Date(date);
@@ -54,7 +52,8 @@ export class EventTicketsService {
 
   async create(createEventTicketDto: CreateEventTicketDto, orgId: string) {
     this.ensureOrgId(orgId);
-    const { eventId, registrationDeadline, ...ticketData } = createEventTicketDto;
+    const { eventId, registrationDeadline, ...ticketData } =
+      createEventTicketDto;
 
     await this.assertEventInOrg(eventId, orgId);
     const deadline = this.ensureFutureDate(registrationDeadline);
@@ -75,7 +74,10 @@ export class EventTicketsService {
     };
   }
 
-  async findAll(orgId: string, query: { page?: number; limit?: number; eventId?: string }) {
+  async findAll(
+    orgId: string,
+    query: { page?: number; limit?: number; eventId?: string },
+  ) {
     this.ensureOrgId(orgId);
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
@@ -200,10 +202,15 @@ export class EventTicketsService {
     return formattedTicket;
   }
 
-  async update(id: string, updateEventTicketDto: UpdateEventTicketDto, orgId: string) {
+  async update(
+    id: string,
+    updateEventTicketDto: UpdateEventTicketDto,
+    orgId: string,
+  ) {
     this.ensureOrgId(orgId);
     const existingTicket = await this.findOne(id, orgId);
-    const { eventId, registrationDeadline, ...ticketData } = updateEventTicketDto;
+    const { eventId, registrationDeadline, ...ticketData } =
+      updateEventTicketDto;
 
     let deadline: Date | undefined;
     if (registrationDeadline) {
@@ -216,9 +223,16 @@ export class EventTicketsService {
 
     const data: Prisma.TicketCategoryUpdateInput = {
       ...(ticketData.name !== undefined && { name: ticketData.name }),
-      ...(ticketData.description !== undefined && { description: ticketData.description }),
+      ...(ticketData.description !== undefined && {
+        description: ticketData.description,
+      }),
+      ...(ticketData.thumbnail !== undefined && {
+        thumbnail: ticketData.thumbnail,
+      }),
       ...(ticketData.price !== undefined && { price: ticketData.price }),
-      ...(ticketData.capacity !== undefined && { capacity: ticketData.capacity }),
+      ...(ticketData.capacity !== undefined && {
+        capacity: ticketData.capacity,
+      }),
       ...(deadline && { registrationDeadline: deadline }),
       ...(eventId && {
         event: {
