@@ -26,6 +26,12 @@ enum AnnouncementType {
   CANCELLED
 }
 
+enum TicketRequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
 model OrganizationParent {
   id                   String              @id @default(cuid())
   name                 String
@@ -141,15 +147,14 @@ model EventAnnouncements {
 }
 
 model TicketRequests {
-  id         String            @id @default(cuid())
-  ticketId   String
-  ticket     TicketCategory    @relation(fields: [ticketId], references: [id])
-  orgId      String
-  org        OrganizationChild @relation(fields: [orgId], references: [id])
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
-  isApproved Boolean           @default(false)
-  ticketLink String?
-
-  @@unique([ticketId, orgId])
+  id            String              @id @default(cuid())
+  ticketId      String
+  ticket        TicketCategory      @relation(fields: [ticketId], references: [id])
+  orgId         String
+  org           OrganizationChild   @relation(fields: [orgId], references: [id])
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  status        TicketRequestStatus @default(PENDING)
+  ticketLink    String?
+  declineReason String?
 }
