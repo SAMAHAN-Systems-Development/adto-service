@@ -14,6 +14,7 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
@@ -82,6 +83,24 @@ export class OrganizationsController {
     icon: Express.Multer.File,
   ) {
     return this.organizationsService.updateOrganizationIcon(id, icon);
+  }
+
+  // Self-service routes — must come before @Get(':id') to avoid route shadowing
+  @Get('me')
+  @HttpCode(HttpStatus.OK)
+  getMyOrganization(@Request() req) {
+    const orgId = req.user.orgId;
+    return this.organizationsService.findOneById(orgId);
+  }
+
+  @Patch('me')
+  @HttpCode(HttpStatus.OK)
+  updateMyOrganization(
+    @Request() req,
+    @Body() updateOrganizationDto: UpdateOrganizationDto,
+  ) {
+    const orgId = req.user.orgId;
+    return this.organizationsService.update(orgId, updateOrganizationDto);
   }
 
   @Get(':id')
