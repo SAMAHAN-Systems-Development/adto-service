@@ -1,7 +1,7 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class ApproveTicketRequestDto {
   @IsString()
-  @IsOptional()
-  ticketLink?: string;
+  @IsNotEmpty()
+  ticketLink: string;
 }

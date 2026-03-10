@@ -5,6 +5,7 @@ import {
   Body,
   Req,
   Patch,
+  Delete,
   Param,
   Query,
   UseGuards,
@@ -12,8 +13,9 @@ import {
 import { TicketRequestsService } from './ticket-requests.service';
 import { CreateTicketRequestDto } from './dto/ticket-request.dto';
 import { ApproveTicketRequestDto } from './dto/approve-ticket.dto';
+import { DeclineTicketRequestDto } from './dto/decline-ticket.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
-import { UserType } from '@prisma/client';
+import { TicketRequestStatus, UserType } from '@prisma/client';
 import { Roles } from 'src/auth/roles.decorator';
 
 @Controller('ticket-requests')
@@ -37,8 +39,8 @@ export class TicketRequestsController {
     @Req() req: any,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
-    @Query('organizationId') OrganizationId?: string,
-    @Query('isApproved') isApproved?: boolean,
+    @Query('organizationId') organizationId?: string,
+    @Query('status') status?: TicketRequestStatus,
     @Query('searchFilter') searchFilter?: string,
     @Query('orderBy') orderBy?: 'asc' | 'desc',
   ) {
@@ -46,10 +48,10 @@ export class TicketRequestsController {
     return this.ticketRequestsService.findAll(role, orgId, {
       page: Number(page) || 1,
       limit: Number(limit) || 10,
-      organizationId: OrganizationId || undefined,
-      isApproved: isApproved || undefined,
+      organizationId: organizationId || undefined,
+      status: status || undefined,
       searchFilter: searchFilter || undefined,
-      orderBy: orderBy || 'asc',
+      orderBy: orderBy || 'desc',
     });
   }
 
@@ -63,8 +65,30 @@ export class TicketRequestsController {
   @Roles(UserType.ADMIN)
   approve(
     @Param('id') id: string,
-    @Body() ApproveTicketRequestDto: ApproveTicketRequestDto,
+    @Body() approveTicketRequestDto: ApproveTicketRequestDto,
   ) {
-    return this.ticketRequestsService.approve(id, ApproveTicketRequestDto);
+    return this.ticketRequestsService.approve(id, approveTicketRequestDto);
+  }
+
+  @Patch('decline/:id')
+  @Roles(UserType.ADMIN)
+  decline(
+    @Param('id') id: string,
+    @Body() declineTicketRequestDto: DeclineTicketRequestDto,
+  ) {
+    return this.ticketRequestsService.decline(id, declineTicketRequestDto);
+  }
+
+  @Delete('cancel/:id')
+  @Roles(UserType.ORGANIZATION)
+  cancel(@Param('id') id: string, @Req() req: any) {
+    const orgId = req.user.orgId;
+    return this.ticketRequestsService.cancel(id, orgId);
+  }
+
+  @Patch('revert/:id')
+  @Roles(UserType.ADMIN)
+  revert(@Param('id') id: string) {
+    return this.ticketRequestsService.revert(id);
   }
 }

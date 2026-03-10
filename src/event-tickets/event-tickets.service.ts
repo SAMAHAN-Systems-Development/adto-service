@@ -1,8 +1,8 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { CreateEventTicketDto } from './dto/create-event-ticket.dto';
 import { UpdateEventTicketDto } from './dto/update-event-ticket.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, TicketRequestStatus } from '@prisma/client';
 
 @Injectable()
 export class EventTicketsService {
@@ -48,6 +48,34 @@ export class EventTicketsService {
     }
 
     return event;
+  }
+
+  private ticketRequestInclude() {
+    return {
+      ticketRequests: {
+        orderBy: { createdAt: 'desc' as const },
+        take: 1,
+        select: {
+          id: true,
+          status: true,
+          ticketLink: true,
+          declineReason: true,
+          createdAt: true,
+        },
+      },
+    };
+  }
+
+  private formatTicketWithRequest(ticket: any) {
+    const { ticketRequests, ...rest } = ticket;
+    const latestRequest = ticketRequests?.[0] || null;
+
+    // Collect all approved ticket links for backwards compatibility
+    return {
+      ...rest,
+      latestRequest,
+      ticketLinks: latestRequest?.ticketLink ? [latestRequest.ticketLink] : [],
+    };
   }
 
   async create(createEventTicketDto: CreateEventTicketDto, orgId: string) {
@@ -103,24 +131,12 @@ export class EventTicketsService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: {
-          ticketRequests: {
-            where: {
-              isApproved: true,
-            },
-            select: {
-              ticketLink: true,
-            },
-          },
-        },
+        include: this.ticketRequestInclude(),
       }),
       this.prisma.ticketCategory.count({ where }),
     ]);
 
-    const data = tickets.map(({ ticketRequests, ...ticket }) => ({
-      ...ticket,
-      ticketLinks: ticket.price > 0 ? ticketRequests.map((req) => req.ticketLink) : [],
-    }));
+    const data = tickets.map((ticket) => this.formatTicketWithRequest(ticket));
 
     return {
       data,
@@ -144,20 +160,16 @@ export class EventTicketsService {
         orderBy: { createdAt: 'desc' },
         include: {
           ticketRequests: {
-            where: {
-              isApproved: true,
-            },
-            select: {
-              ticketLink: true,
-            },
-          },
+            where: { status: 'APPROVED' },
+            select: { ticketLink: true },
+          } as any,
         },
       }),
     ]);
 
-    const data = tickets.map(({ ticketRequests, ...ticket }) => ({
+    const data = tickets.map(({ ticketRequests, ...ticket }: any) => ({
       ...ticket,
-      ticketLinks: ticket.price > 0 ? ticketRequests.map((req) => req.ticketLink) : [],
+      ticketLinks: ticket.price > 0 ? ticketRequests.map((req: any) => req.ticketLink) : [],
     }));
 
     return {
@@ -171,14 +183,7 @@ export class EventTicketsService {
       where: { id },
       include: {
         event: true,
-        ticketRequests: {
-          where: {
-            isApproved: true,
-          },
-          select: {
-            ticketLink: true,
-          },
-        },
+        ...this.ticketRequestInclude(),
       },
     });
 
@@ -193,13 +198,7 @@ export class EventTicketsService {
       );
     }
 
-    const formattedTicket = {
-      ...ticket,
-      ticketRequests: undefined,
-      ticketLinks: ticket.price > 0 ? ticket.ticketRequests.map((req) => req.ticketLink) : [],
-    };
-
-    return formattedTicket;
+    return this.formatTicketWithRequest(ticket);
   }
 
   async update(
@@ -208,9 +207,23 @@ export class EventTicketsService {
     orgId: string,
   ) {
     this.ensureOrgId(orgId);
-    const existingTicket = await this.findOne(id, orgId);
+    const existingTicket = await this.findOne(id, orgId); // This already verifies ownership
     const { eventId, registrationDeadline, ...ticketData } =
       updateEventTicketDto;
+
+    // Check for active requests to prevent modification
+    const activeRequest = await this.prisma.ticketRequests.findFirst({
+      where: {
+        ticketId: id,
+        status: { in: [TicketRequestStatus.PENDING, TicketRequestStatus.APPROVED] },
+      },
+    });
+
+    if (activeRequest) {
+      throw new BadRequestException(
+        'Cannot modify this ticket. Please cancel the pending or approved ticket request first.',
+      );
+    }
 
     let deadline: Date | undefined;
     if (registrationDeadline) {
@@ -254,7 +267,21 @@ export class EventTicketsService {
 
   async remove(id: string, orgId: string) {
     this.ensureOrgId(orgId);
-    const ticket = await this.findOne(id, orgId);
+    const ticket = await this.findOne(id, orgId); // This already verifies ownership
+
+    // Check for active requests to prevent deletion
+    const activeRequest = await this.prisma.ticketRequests.findFirst({
+      where: {
+        ticketId: id,
+        status: { in: [TicketRequestStatus.PENDING, TicketRequestStatus.APPROVED] },
+      },
+    });
+
+    if (activeRequest) {
+      throw new BadRequestException(
+        'Cannot archive this ticket. Please cancel the pending or approved ticket request first.',
+      );
+    }
 
     await this.prisma.ticketCategory.delete({
       where: { id: ticket.id },

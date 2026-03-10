@@ -9,22 +9,26 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateTicketRequestDto } from './dto/ticket-request.dto';
 import { ApproveTicketRequestDto } from './dto/approve-ticket.dto';
-import { Prisma, UserType } from '@prisma/client';
+import { DeclineTicketRequestDto } from './dto/decline-ticket.dto';
+import { Prisma, TicketRequestStatus, UserType } from '@prisma/client';
 
 @Injectable()
 export class TicketRequestsService {
   constructor(private readonly prisma: PrismaService) {}
+
   async create(createTicketRequestDto: CreateTicketRequestDto, orgId: string) {
     try {
       const { ticketId } = createTicketRequestDto;
       await this.ticketOwnedByOrg(ticketId, orgId);
-      await this.isTicketAlreadyRequested(ticketId, orgId);
+      await this.hasPendingRequest(ticketId, orgId);
+
       const newTicketRequest = await this.prisma.ticketRequests.create({
         data: {
           orgId: orgId,
           ticketId: ticketId,
         },
       });
+
       return {
         message: 'Ticket request created successfully',
         data: newTicketRequest,
@@ -49,7 +53,7 @@ export class TicketRequestsService {
     query: {
       page?: number;
       limit?: number;
-      isApproved?: boolean;
+      status?: TicketRequestStatus;
       searchFilter?: string;
       organizationId?: string;
       ticketId?: string;
@@ -59,21 +63,20 @@ export class TicketRequestsService {
     const {
       page = 1,
       limit = 10,
-      isApproved,
+      status,
       searchFilter,
       organizationId,
       ticketId,
-      orderBy = 'asc',
+      orderBy = 'desc',
     } = query;
 
     const skip = (page - 1) * limit;
 
-    // 🔹 Same idea as your effectiveOrgId
     const effectiveOrgId =
       role === UserType.ORGANIZATION && orgId ? orgId : organizationId;
 
     const where: Prisma.TicketRequestsWhereInput = {
-      ...(isApproved !== undefined && { isApproved }),
+      ...(status !== undefined && { status }),
       ...(effectiveOrgId && { orgId: effectiveOrgId }),
       ...(ticketId && { ticketId }),
 
@@ -101,8 +104,24 @@ export class TicketRequestsService {
         createdAt: orderBy,
       },
       include: {
-        ticket: true,
-        org: true,
+        ticket: {
+          include: {
+            event: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        org: {
+          select: {
+            id: true,
+            name: true,
+            acronym: true,
+            icon: true,
+          },
+        },
       },
     });
 
@@ -123,12 +142,25 @@ export class TicketRequestsService {
     try {
       const ticketRequest = await this.prisma.ticketRequests.findUnique({
         where: { id: id },
-        select: {
-          id: true,
-          ticketId: true,
-          orgId: true,
-          isApproved: true,
-          ticketLink: true,
+        include: {
+          ticket: {
+            include: {
+              event: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+          org: {
+            select: {
+              id: true,
+              name: true,
+              acronym: true,
+              icon: true,
+            },
+          },
         },
       });
 
@@ -155,27 +187,161 @@ export class TicketRequestsService {
     try {
       const { ticketLink } = approveTicketRequestDto;
 
+      const existing = await this.prisma.ticketRequests.findUnique({
+        where: { id },
+      });
+
+      if (!existing) {
+        throw new NotFoundException('Ticket request not found');
+      }
+
+      if (existing.status !== TicketRequestStatus.PENDING) {
+        throw new BadRequestException(
+          'Only pending requests can be approved',
+        );
+      }
+
       const approvedRequest = await this.prisma.ticketRequests.update({
         where: { id },
         data: {
-          ticketLink: ticketLink || null,
-          isApproved: !!ticketLink,
+          ticketLink,
+          status: TicketRequestStatus.APPROVED,
         },
       });
 
       return {
-        message: ticketLink
-          ? 'Ticket request approved successfully'
-          : 'Ticket link removed, request marked as not approved',
+        message: 'Ticket request approved successfully',
         data: approvedRequest,
         statusCode: HttpStatus.OK,
       };
     } catch (error) {
-      if (error instanceof BadRequestException) {
+      if (error instanceof HttpException) {
         throw error;
       }
       throw new HttpException(
-        'Failed to update ticket request',
+        'Failed to approve ticket request',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async decline(id: string, declineTicketRequestDto: DeclineTicketRequestDto) {
+    try {
+      const { declineReason } = declineTicketRequestDto;
+
+      const existing = await this.prisma.ticketRequests.findUnique({
+        where: { id },
+      });
+
+      if (!existing) {
+        throw new NotFoundException('Ticket request not found');
+      }
+
+      if (existing.status !== TicketRequestStatus.PENDING) {
+        throw new BadRequestException(
+          'Only pending requests can be declined',
+        );
+      }
+
+      const declinedRequest = await this.prisma.ticketRequests.update({
+        where: { id },
+        data: {
+          declineReason,
+          status: TicketRequestStatus.DECLINED,
+        },
+      });
+
+      return {
+        message: 'Ticket request declined successfully',
+        data: declinedRequest,
+        statusCode: HttpStatus.OK,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Failed to decline ticket request',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async cancel(id: string, orgId: string) {
+    try {
+      const existing = await this.prisma.ticketRequests.findUnique({
+        where: { id },
+      });
+
+      if (!existing) {
+        throw new NotFoundException('Ticket request not found');
+      }
+
+      if (existing.orgId !== orgId) {
+        throw new ForbiddenException('You can only cancel your own requests');
+      }
+
+      if (existing.status !== TicketRequestStatus.PENDING) {
+        throw new BadRequestException(
+          'Only pending requests can be cancelled',
+        );
+      }
+
+      await this.prisma.ticketRequests.delete({
+        where: { id },
+      });
+
+      return {
+        message: 'Ticket request cancelled successfully',
+        statusCode: HttpStatus.OK,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Failed to cancel ticket request',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async revert(id: string) {
+    try {
+      const existing = await this.prisma.ticketRequests.findUnique({
+        where: { id },
+      });
+
+      if (!existing) {
+        throw new NotFoundException('Ticket request not found');
+      }
+
+      if (existing.status === TicketRequestStatus.PENDING) {
+        throw new BadRequestException(
+          'Request is already pending',
+        );
+      }
+
+      const revertedRequest = await this.prisma.ticketRequests.update({
+        where: { id },
+        data: {
+          status: TicketRequestStatus.PENDING,
+          ticketLink: null,
+          declineReason: null,
+        },
+      });
+
+      return {
+        message: 'Ticket request reverted to pending successfully',
+        data: revertedRequest,
+        statusCode: HttpStatus.OK,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Failed to revert ticket request',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -198,23 +364,22 @@ export class TicketRequestsService {
     }
   }
 
-  private async isTicketAlreadyRequested(
+  private async hasPendingRequest(
     ticketId: string,
     orgId: string,
-  ): Promise<boolean> {
-    const existingRequest = await this.prisma.ticketRequests.findFirst({
+  ): Promise<void> {
+    const pendingRequest = await this.prisma.ticketRequests.findFirst({
       where: {
         ticketId: ticketId,
         orgId: orgId,
+        status: TicketRequestStatus.PENDING,
       },
     });
 
-    if (existingRequest) {
+    if (pendingRequest) {
       throw new BadRequestException(
-        'A ticket request for this ticket by your organization already exists',
+        'A pending ticket request for this ticket already exists',
       );
     }
-
-    return !!existingRequest;
   }
 }

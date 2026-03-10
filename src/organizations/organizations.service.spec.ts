@@ -154,9 +154,10 @@ describe('OrganizationsService', () => {
     it('should create organization without password if not provided', async () => {
       // Arrange
       const createDtoWithoutPassword: CreateOrganizationDto = {
-        name: 'Test Organization',
-        email: 'test@example.com',
-        acronym: 'TO',
+        name: 'Test Org',
+        email: 'test@org.com',
+        acronym: 'TEST',
+        password: 'Password123!',
       };
 
       const mockOrgWithoutUser = {
