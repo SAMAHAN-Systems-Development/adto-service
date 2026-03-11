@@ -70,6 +70,7 @@ export class EventsController {
     @Query('searchFilter') searchFilter?: string,
     @Query('orderBy') orderBy?: 'asc' | 'desc',
     @Query('price') price?: 'free' | 'paid' | 'all',
+    @Query('eventStatus') eventStatus?: 'DRAFT' | 'UPCOMING' | 'FINISHED' | 'ARCHIVED',
   ) {
     const { role, orgId } = req.user;
     return this.eventsService.findAll(role, orgId, {
@@ -83,6 +84,7 @@ export class EventsController {
       organizationParentId: organizationParentId || undefined,
       orderBy: orderBy || 'asc',
       price: price || undefined,
+      eventStatus: eventStatus || undefined,
     });
   }
 

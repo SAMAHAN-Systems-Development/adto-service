@@ -56,6 +56,7 @@ export class EventsService {
       organizationParentId?: string;
       orderBy?: 'asc' | 'desc';
       price?: 'free' | 'paid' | 'all';
+      eventStatus?: 'DRAFT' | 'UPCOMING' | 'FINISHED' | 'ARCHIVED';
     },
   ) {
     const {
@@ -69,9 +70,26 @@ export class EventsService {
       organizationParentId,
       orderBy = 'asc',
       price,
+      eventStatus,
     } = query;
 
     const skip = (page - 1) * limit;
+
+    // Build eventStatus-based where clause
+    const eventStatusWhere: Prisma.EventWhereInput = (() => {
+      switch (eventStatus) {
+        case 'DRAFT':
+          return { isPublished: false };
+        case 'UPCOMING':
+          return { isPublished: true, dateEnd: { gt: new Date() } };
+        case 'FINISHED':
+          return { isPublished: true, dateEnd: { lte: new Date() } };
+        case 'ARCHIVED':
+          return { isArchived: true };
+        default:
+          return {};
+      }
+    })();
 
     const where: Prisma.EventWhereInput = {
       ...(isRegistrationOpen && { isRegistrationOpen }),
@@ -116,9 +134,10 @@ export class EventsService {
             }),
           },
         }),
-    ...(role !== UserType.ADMIN && role !== UserType.ORGANIZATION && { isPublished: true }),
+      ...eventStatusWhere,
+      ...(role !== UserType.ADMIN && role !== UserType.ORGANIZATION && { isPublished: true }),
       deletedAt: null,
-      isArchived: false,
+      ...(eventStatus !== 'ARCHIVED' && { isArchived: false }),
     };
 
     const events = await this.prisma.event.findMany({
