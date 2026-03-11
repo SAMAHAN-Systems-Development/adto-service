@@ -4,6 +4,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -56,6 +57,7 @@ export class EventsService {
       organizationParentId?: string;
       orderBy?: 'asc' | 'desc';
       price?: 'free' | 'paid' | 'all';
+      eventStatus?: 'DRAFT' | 'UPCOMING' | 'FINISHED' | 'ARCHIVED';
     },
   ) {
     const {
@@ -69,9 +71,26 @@ export class EventsService {
       organizationParentId,
       orderBy = 'asc',
       price,
+      eventStatus,
     } = query;
 
     const skip = (page - 1) * limit;
+
+    // Build eventStatus-based where clause
+    const eventStatusWhere: Prisma.EventWhereInput = (() => {
+      switch (eventStatus) {
+        case 'DRAFT':
+          return { isPublished: false };
+        case 'UPCOMING':
+          return { isPublished: true, dateEnd: { gt: new Date() } };
+        case 'FINISHED':
+          return { isPublished: true, dateEnd: { lte: new Date() } };
+        case 'ARCHIVED':
+          return { isArchived: true };
+        default:
+          return {};
+      }
+    })();
 
     const where: Prisma.EventWhereInput = {
       ...(isRegistrationOpen && { isRegistrationOpen }),
@@ -116,9 +135,10 @@ export class EventsService {
             }),
           },
         }),
-    ...(role !== UserType.ADMIN && role !== UserType.ORGANIZATION && { isPublished: true }),
+      ...eventStatusWhere,
+      ...(role !== UserType.ADMIN && role !== UserType.ORGANIZATION && { isPublished: true }),
       deletedAt: null,
-      isArchived: false,
+      ...(eventStatus !== 'ARCHIVED' && { isArchived: false }),
     };
 
     const events = await this.prisma.event.findMany({
@@ -284,6 +304,21 @@ export class EventsService {
 
   async archive(id: string) {
     await this.findOne(id);
+
+    const registrationCount = await this.prisma.registration.count({
+      where: {
+        ticketCategory: {
+          eventId: id,
+        },
+      },
+    });
+
+    if (registrationCount > 0) {
+      throw new BadRequestException(
+        'Event cannot be archived because it has registered participants',
+      );
+    }
+
     try {
       return {
         message: 'Event archived successfully',
@@ -303,6 +338,36 @@ export class EventsService {
         });
       }
       throw new InternalServerErrorException('Event could not be archived', {
+        cause: error,
+        description: 'An unexpected error occurred',
+      });
+    }
+  }
+
+  async unarchive(id: string) {
+    await this.findOne(id);
+    try {
+      return {
+        message: 'Event unarchived successfully',
+        data: await this.prisma.event.update({
+          where: { id },
+          data: { 
+            isArchived: false,
+            isPublished: false,
+          },
+        }),
+      };
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException('Event not found', {
+          cause: error,
+          description: 'Id does not exist',
+        });
+      }
+      throw new InternalServerErrorException('Event could not be unarchived', {
         cause: error,
         description: 'An unexpected error occurred',
       });
