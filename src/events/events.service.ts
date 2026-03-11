@@ -4,6 +4,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -303,6 +304,21 @@ export class EventsService {
 
   async archive(id: string) {
     await this.findOne(id);
+
+    const registrationCount = await this.prisma.registration.count({
+      where: {
+        ticketCategory: {
+          eventId: id,
+        },
+      },
+    });
+
+    if (registrationCount > 0) {
+      throw new BadRequestException(
+        'Event cannot be archived because it has registered participants',
+      );
+    }
+
     try {
       return {
         message: 'Event archived successfully',
