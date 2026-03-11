@@ -131,7 +131,7 @@ export class RegistrationsService {
               },
             },
           },
-          orderBy: { createdAt: orderBy },
+          orderBy: [{ createdAt: orderBy }, { id: 'asc' }],
         }),
         this.prisma.registration.count({ where }),
       ]);
