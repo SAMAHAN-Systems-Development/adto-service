@@ -17,8 +17,12 @@ export class DashboardService {
       deletedAt: null,
     };
 
-    const [totalEvents, upcomingEvents, ongoingEvents, draftEvents] =
+    const [org, totalEvents, upcomingEvents, ongoingEvents, draftEvents] =
       await Promise.all([
+        this.prisma.organizationChild.findUnique({
+          where: { id: orgId },
+          select: { name: true },
+        }),
         this.prisma.event.count({ where: baseWhere }),
         this.prisma.event.count({
           where: {
@@ -41,7 +45,13 @@ export class DashboardService {
         }),
       ]);
 
-    return { totalEvents, upcomingEvents, ongoingEvents, draftEvents };
+    return { 
+      orgName: org?.name,
+      totalEvents, 
+      upcomingEvents, 
+      ongoingEvents, 
+      draftEvents 
+    };
   }
 
   /**
