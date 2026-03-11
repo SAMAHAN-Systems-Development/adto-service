@@ -168,6 +168,9 @@ export class OrganizationsService {
         where: {
           isArchived: false,
         },
+        include: {
+          organizationParents: true,
+        },
       });
 
       if (!organizations) {

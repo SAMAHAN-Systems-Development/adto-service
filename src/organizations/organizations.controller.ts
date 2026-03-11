@@ -54,6 +54,7 @@ export class OrganizationsController {
     return this.organizationsService.findAllOrganizationsWithoutFilters();
   }
 
+  @Public()
   @Get('/organizationParent/:id')
   findAllByOrganizationParent(
     @Param('id') id: string,
