@@ -106,6 +106,12 @@ export class EventsController {
     return this.eventsService.archive(id);
   }
 
+  @Patch('/:id/unarchive')
+  @Roles(UserType.ADMIN, UserType.ORGANIZATION)
+  unarchive(@Param('id') id: string) {
+    return this.eventsService.unarchive(id);
+  }
+
   @Public()
   @Get(':id')
   findOne(@Param('id') id: string) {

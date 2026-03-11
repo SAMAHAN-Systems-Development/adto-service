@@ -327,4 +327,34 @@ export class EventsService {
       });
     }
   }
+
+  async unarchive(id: string) {
+    await this.findOne(id);
+    try {
+      return {
+        message: 'Event unarchived successfully',
+        data: await this.prisma.event.update({
+          where: { id },
+          data: { 
+            isArchived: false,
+            isPublished: false,
+          },
+        }),
+      };
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException('Event not found', {
+          cause: error,
+          description: 'Id does not exist',
+        });
+      }
+      throw new InternalServerErrorException('Event could not be unarchived', {
+        cause: error,
+        description: 'An unexpected error occurred',
+      });
+    }
+  }
 }
