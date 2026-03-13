@@ -53,6 +53,7 @@ export class EventsController {
       organizationParentId: organizationParentId || undefined,
       orderBy: orderBy || 'asc',
       price: price || undefined,
+      eventStatus: 'UPCOMING',
     });
   }
 

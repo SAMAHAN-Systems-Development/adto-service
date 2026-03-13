@@ -17,11 +17,31 @@ export class EventsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createEventDto: CreateEventDto, orgId: string) {
+    const dateStart = new Date(createEventDto.dateStart);
+    const dateEnd = new Date(createEventDto.dateEnd);
+    const now = new Date();
+
+    if (Number.isNaN(dateStart.getTime()) || Number.isNaN(dateEnd.getTime())) {
+      throw new BadRequestException('Invalid start or end date format.');
+    }
+
+    if (dateStart < now) {
+      throw new BadRequestException(
+        'Start date/time cannot be in the past.',
+      );
+    }
+
+    if (dateEnd <= dateStart) {
+      throw new BadRequestException(
+        'End date/time must be after start date/time.',
+      );
+    }
+
     const createdEvent = await this.prisma.event.create({
       data: {
         ...createEventDto,
-        dateStart: new Date(createEventDto.dateStart),
-        dateEnd: new Date(createEventDto.dateEnd),
+        dateStart,
+        dateEnd,
         org: {
           connect: {
             id: orgId,
