@@ -1,4 +1,11 @@
-import { HttpException, HttpStatus, Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { CreateEventTicketDto } from './dto/create-event-ticket.dto';
 import { UpdateEventTicketDto } from './dto/update-event-ticket.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -163,14 +170,21 @@ export class EventTicketsService {
             where: { status: 'APPROVED' },
             select: { ticketLink: true },
           } as any,
+          registrations: { select: { id: true } },
         },
       }),
     ]);
 
-    const data = tickets.map(({ ticketRequests, ...ticket }: any) => ({
-      ...ticket,
-      ticketLinks: ticket.price > 0 ? ticketRequests.map((req: any) => req.ticketLink) : [],
-    }));
+    const data = tickets.map(
+      ({ ticketRequests, registrations, ...ticket }: any) => ({
+        ...ticket,
+        availableCapacity: ticket.capacity - (registrations?.length || 0),
+        ticketLinks:
+          ticket.price > 0
+            ? ticketRequests.map((req: any) => req.ticketLink)
+            : [],
+      }),
+    );
 
     return {
       data,
@@ -215,7 +229,9 @@ export class EventTicketsService {
     const activeRequest = await this.prisma.ticketRequests.findFirst({
       where: {
         ticketId: id,
-        status: { in: [TicketRequestStatus.PENDING, TicketRequestStatus.APPROVED] },
+        status: {
+          in: [TicketRequestStatus.PENDING, TicketRequestStatus.APPROVED],
+        },
       },
     });
 
@@ -273,7 +289,9 @@ export class EventTicketsService {
     const activeRequest = await this.prisma.ticketRequests.findFirst({
       where: {
         ticketId: id,
-        status: { in: [TicketRequestStatus.PENDING, TicketRequestStatus.APPROVED] },
+        status: {
+          in: [TicketRequestStatus.PENDING, TicketRequestStatus.APPROVED],
+        },
       },
     });
 
