@@ -222,4 +222,24 @@ export class RegistrationsService {
       );
     }
   }
+
+  async remove(id: string) {
+    try {
+      await this.findOne(id);
+      await this.prisma.registration.delete({ where: { id } });
+
+      return {
+        message: 'Registration deleted successfully',
+        statusCode: HttpStatus.OK,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Failed to delete registration',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }

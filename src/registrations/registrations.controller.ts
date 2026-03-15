@@ -5,6 +5,7 @@ import {
   Body,
   Patch,
   Param,
+  Delete,
   UseGuards,
   Query,
 } from '@nestjs/common';
@@ -57,5 +58,11 @@ export class RegistrationsController {
     @Body() updateRegistrationDto: UpdateRegistrationDto,
   ) {
     return this.registrationsService.update(id, updateRegistrationDto);
+  }
+
+  @Delete('delete/:id')
+  @Roles(UserType.ADMIN, UserType.ORGANIZATION)
+  remove(@Param('id') id: string) {
+    return this.registrationsService.remove(id);
   }
 }
