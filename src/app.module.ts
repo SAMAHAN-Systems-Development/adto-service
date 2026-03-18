@@ -15,6 +15,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 
 import { RegistrationsModule } from './registrations/registrations.module';
 import { TicketRequestsModule } from './ticket-requests/ticket-requests.module';
+import { EventRequestsModule } from './event-requests/event-requests.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { TicketRequestsModule } from './ticket-requests/ticket-requests.module';
     EventTicketsModule,
     RegistrationsModule,
     TicketRequestsModule,
+    EventRequestsModule,
     AssetsModule,
     S3Module,
     DashboardModule,

@@ -248,6 +248,15 @@ export class EventsService {
     await this.findOne(id);
 
     try {
+      if (updateEventDto.isPublished) {
+        const approvedRequest = await this.prisma.eventRequest.findFirst({
+          where: { eventId: id, status: 'APPROVED' },
+        });
+        if (!approvedRequest) {
+          throw new BadRequestException('Event must have an approved concept paper request before publishing');
+        }
+      }
+
       const updatedEvent = await this.prisma.event.update({
         where: {
           id,
@@ -281,6 +290,19 @@ export class EventsService {
 
   async publishEvent(id: string) {
     await this.findOne(id);
+    
+    // Check for approved event request
+    const approvedRequest = await this.prisma.eventRequest.findFirst({
+      where: {
+        eventId: id,
+        status: 'APPROVED',
+      },
+    });
+
+    if (!approvedRequest) {
+      throw new BadRequestException('Event must have an approved concept paper request before publishing');
+    }
+
     try {
       const publishedEvent = await this.prisma.event.update({
         where: {
@@ -467,11 +489,17 @@ export class EventsService {
       console.error('Failed to delete concept paper from storage', e);
     }
 
+    // Delete associated event request and unpublish event
+    await this.prisma.eventRequest.deleteMany({
+      where: { eventId: id }
+    });
+
     const updatedEvent = await this.prisma.event.update({
       where: { id },
       data: {
         conceptPaperUrl: null,
         conceptPaperPath: null,
+        isPublished: false,
       },
       include: { org: true },
     });
