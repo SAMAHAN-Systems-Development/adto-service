@@ -12,9 +12,14 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { UserType } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 
+import { S3Service } from '../s3/s3.service';
+
 @Injectable()
 export class EventsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly s3Service: S3Service,
+  ) {}
 
   async create(createEventDto: CreateEventDto, orgId: string) {
     const dateStart = new Date(createEventDto.dateStart);
@@ -392,5 +397,88 @@ export class EventsService {
         description: 'An unexpected error occurred',
       });
     }
+  }
+
+  async uploadConceptPaper(id: string, file: Express.Multer.File, user: any) {
+    const event = await this.findOne(id);
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+    if (user.role === UserType.ORGANIZATION && event.orgId !== user.orgId) {
+      throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
+    }
+
+    // Delete existing concept paper if exists
+    if (event.conceptPaperPath) {
+      try {
+        await this.s3Service.deleteFile(
+          event.conceptPaperPath,
+          process.env.UPLOADS_BUCKET || 'uploads',
+        );
+      } catch (e) {
+        console.error('Failed to delete old concept paper', e);
+      }
+    }
+
+    // Upload new concept paper
+    const bucketName = process.env.UPLOADS_BUCKET || 'uploads';
+    const uploadResult = await this.s3Service.uploadFile({
+      buffer: file.buffer,
+      fileName: file.originalname,
+      folder: 'concept-papers',
+      contentType: file.mimetype,
+      bucketName,
+    });
+
+    const updatedEvent = await this.prisma.event.update({
+      where: { id },
+      data: {
+        conceptPaperUrl: uploadResult.url,
+        conceptPaperPath: uploadResult.key,
+      },
+      include: { org: true },
+    });
+
+    return {
+      message: 'Concept paper uploaded successfully',
+      data: updatedEvent,
+    };
+  }
+
+  async deleteConceptPaper(id: string, user: any) {
+    const event = await this.findOne(id);
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+    if (user.role === UserType.ORGANIZATION && event.orgId !== user.orgId) {
+      throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
+    }
+
+    if (!event.conceptPaperPath) {
+      throw new BadRequestException('No concept paper found to delete');
+    }
+
+    try {
+      await this.s3Service.deleteFile(
+        event.conceptPaperPath,
+        process.env.UPLOADS_BUCKET || 'uploads',
+      );
+    } catch (e) {
+      console.error('Failed to delete concept paper from storage', e);
+    }
+
+    const updatedEvent = await this.prisma.event.update({
+      where: { id },
+      data: {
+        conceptPaperUrl: null,
+        conceptPaperPath: null,
+      },
+      include: { org: true },
+    });
+
+    return {
+      message: 'Concept paper deleted successfully',
+      data: updatedEvent,
+    };
   }
 }

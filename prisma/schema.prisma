@@ -119,6 +119,8 @@ model Event {
   description            String
   banner                 String?              // Event banner image URL
   thumbnail              String?              // Event thumbnail image URL
+  conceptPaperUrl        String?              // URL of the uploaded concept paper
+  conceptPaperPath       String?              // Supabase storage bucket path/key for concept paper
   dateStart              DateTime
   dateEnd                DateTime
   isRegistrationOpen     Boolean              @default(false) // Registration can be published but not open
