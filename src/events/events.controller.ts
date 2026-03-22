@@ -120,8 +120,8 @@ export class EventsController {
     return this.eventsService.findOne(id);
   }
 
+  @Public()
   @Get(':id/stats')
-  @Roles(UserType.ADMIN, UserType.ORGANIZATION)
   getEventStats(@Param('id') id: string) {
     return this.eventsService.getEventStats(id);
   }
