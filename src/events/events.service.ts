@@ -252,7 +252,9 @@ export class EventsService {
           where: { eventId: id, status: 'APPROVED' },
         });
         if (!approvedRequest) {
-          throw new BadRequestException('Event must have an approved concept paper request before publishing');
+          throw new BadRequestException(
+            'Event must have an approved concept paper request before publishing',
+          );
         }
       }
 
@@ -289,7 +291,7 @@ export class EventsService {
 
   async publishEvent(id: string) {
     await this.findOne(id);
-    
+
     // Check for approved event request
     const approvedRequest = await this.prisma.eventRequest.findFirst({
       where: {
@@ -299,7 +301,9 @@ export class EventsService {
     });
 
     if (!approvedRequest) {
-      throw new BadRequestException('Event must have an approved concept paper request before publishing');
+      throw new BadRequestException(
+        'Event must have an approved concept paper request before publishing',
+      );
     }
 
     try {
@@ -490,7 +494,7 @@ export class EventsService {
 
     // Delete associated event request and unpublish event
     await this.prisma.eventRequest.deleteMany({
-      where: { eventId: id }
+      where: { eventId: id },
     });
 
     const updatedEvent = await this.prisma.event.update({
@@ -506,6 +510,9 @@ export class EventsService {
     return {
       message: 'Concept paper deleted successfully',
       data: updatedEvent,
+    };
+  }
+
   async getEventStats(eventId: string) {
     const [registrationsCount, ticketsCount, announcementsCount] =
       await Promise.all([
