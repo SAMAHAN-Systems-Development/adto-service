@@ -185,7 +185,8 @@ export class TicketRequestsService {
 
   async approve(id: string, approveTicketRequestDto: ApproveTicketRequestDto) {
     try {
-      const { ticketLink } = approveTicketRequestDto;
+      const { ticketLink, helixpayUsername, helixpayPassword, messengerLink } =
+        approveTicketRequestDto;
 
       const existing = await this.prisma.ticketRequests.findUnique({
         where: { id },
@@ -196,15 +197,16 @@ export class TicketRequestsService {
       }
 
       if (existing.status !== TicketRequestStatus.PENDING) {
-        throw new BadRequestException(
-          'Only pending requests can be approved',
-        );
+        throw new BadRequestException('Only pending requests can be approved');
       }
 
       const approvedRequest = await this.prisma.ticketRequests.update({
         where: { id },
         data: {
           ticketLink,
+          helixpayUsername,
+          helixpayPassword,
+          messengerLink,
           status: TicketRequestStatus.APPROVED,
         },
       });
@@ -238,9 +240,7 @@ export class TicketRequestsService {
       }
 
       if (existing.status !== TicketRequestStatus.PENDING) {
-        throw new BadRequestException(
-          'Only pending requests can be declined',
-        );
+        throw new BadRequestException('Only pending requests can be declined');
       }
 
       const declinedRequest = await this.prisma.ticketRequests.update({
@@ -282,9 +282,7 @@ export class TicketRequestsService {
       }
 
       if (existing.status !== TicketRequestStatus.PENDING) {
-        throw new BadRequestException(
-          'Only pending requests can be cancelled',
-        );
+        throw new BadRequestException('Only pending requests can be cancelled');
       }
 
       await this.prisma.ticketRequests.delete({
@@ -317,9 +315,7 @@ export class TicketRequestsService {
       }
 
       if (existing.status === TicketRequestStatus.PENDING) {
-        throw new BadRequestException(
-          'Request is already pending',
-        );
+        throw new BadRequestException('Request is already pending');
       }
 
       const revertedRequest = await this.prisma.ticketRequests.update({
