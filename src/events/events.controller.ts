@@ -5,10 +5,17 @@ import {
   Body,
   Patch,
   Param,
+  Delete,
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -130,5 +137,30 @@ export class EventsController {
   @Roles(UserType.ADMIN, UserType.ORGANIZATION)
   update(@Param('id') id: string, @Body() updateEventDto: UpdateEventDto) {
     return this.eventsService.update(id, updateEventDto);
+  }
+
+  @Post(':id/concept-paper')
+  @Roles(UserType.ADMIN, UserType.ORGANIZATION)
+  @UseInterceptors(FileInterceptor('file'))
+  uploadConceptPaper(
+    @Param('id') id: string,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 15 }), // 15MB
+          new FileTypeValidator({ fileType: 'application/pdf' }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+    @Req() req: any,
+  ) {
+    return this.eventsService.uploadConceptPaper(id, file, req.user);
+  }
+
+  @Delete(':id/concept-paper')
+  @Roles(UserType.ADMIN, UserType.ORGANIZATION)
+  deleteConceptPaper(@Param('id') id: string, @Req() req: any) {
+    return this.eventsService.deleteConceptPaper(id, req.user);
   }
 }

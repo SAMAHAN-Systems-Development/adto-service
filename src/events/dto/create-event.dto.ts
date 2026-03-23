@@ -41,4 +41,8 @@ export class CreateEventDto {
   @IsString()
   @IsOptional()
   thumbnail?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isPublished?: boolean;
 }

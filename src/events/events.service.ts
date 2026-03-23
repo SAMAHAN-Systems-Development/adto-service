@@ -12,9 +12,14 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { UserType } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 
+import { S3Service } from '../s3/s3.service';
+
 @Injectable()
 export class EventsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly s3Service: S3Service,
+  ) {}
 
   async create(createEventDto: CreateEventDto, orgId: string) {
     const dateStart = new Date(createEventDto.dateStart);
@@ -242,6 +247,15 @@ export class EventsService {
     await this.findOne(id);
 
     try {
+      if (updateEventDto.isPublished) {
+        const approvedRequest = await this.prisma.eventRequest.findFirst({
+          where: { eventId: id, status: 'APPROVED' },
+        });
+        if (!approvedRequest) {
+          throw new BadRequestException('Event must have an approved concept paper request before publishing');
+        }
+      }
+
       const updatedEvent = await this.prisma.event.update({
         where: {
           id,
@@ -275,6 +289,19 @@ export class EventsService {
 
   async publishEvent(id: string) {
     await this.findOne(id);
+    
+    // Check for approved event request
+    const approvedRequest = await this.prisma.eventRequest.findFirst({
+      where: {
+        eventId: id,
+        status: 'APPROVED',
+      },
+    });
+
+    if (!approvedRequest) {
+      throw new BadRequestException('Event must have an approved concept paper request before publishing');
+    }
+
     try {
       const publishedEvent = await this.prisma.event.update({
         where: {
@@ -393,6 +420,92 @@ export class EventsService {
     }
   }
 
+  async uploadConceptPaper(id: string, file: Express.Multer.File, user: any) {
+    const event = await this.findOne(id);
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+    if (user.role === UserType.ORGANIZATION && event.orgId !== user.orgId) {
+      throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
+    }
+
+    // Delete existing concept paper if exists
+    if (event.conceptPaperPath) {
+      try {
+        await this.s3Service.deleteFile(
+          event.conceptPaperPath,
+          process.env.UPLOADS_BUCKET || 'uploads',
+        );
+      } catch (e) {
+        console.error('Failed to delete old concept paper', e);
+      }
+    }
+
+    // Upload new concept paper
+    const bucketName = process.env.UPLOADS_BUCKET || 'uploads';
+    const uploadResult = await this.s3Service.uploadFile({
+      buffer: file.buffer,
+      fileName: file.originalname,
+      folder: 'concept-papers',
+      contentType: file.mimetype,
+      bucketName,
+    });
+
+    const updatedEvent = await this.prisma.event.update({
+      where: { id },
+      data: {
+        conceptPaperUrl: uploadResult.url,
+        conceptPaperPath: uploadResult.key,
+      },
+      include: { org: true },
+    });
+
+    return {
+      message: 'Concept paper uploaded successfully',
+      data: updatedEvent,
+    };
+  }
+
+  async deleteConceptPaper(id: string, user: any) {
+    const event = await this.findOne(id);
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+    if (user.role === UserType.ORGANIZATION && event.orgId !== user.orgId) {
+      throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
+    }
+
+    if (!event.conceptPaperPath) {
+      throw new BadRequestException('No concept paper found to delete');
+    }
+
+    try {
+      await this.s3Service.deleteFile(
+        event.conceptPaperPath,
+        process.env.UPLOADS_BUCKET || 'uploads',
+      );
+    } catch (e) {
+      console.error('Failed to delete concept paper from storage', e);
+    }
+
+    // Delete associated event request and unpublish event
+    await this.prisma.eventRequest.deleteMany({
+      where: { eventId: id }
+    });
+
+    const updatedEvent = await this.prisma.event.update({
+      where: { id },
+      data: {
+        conceptPaperUrl: null,
+        conceptPaperPath: null,
+        isPublished: false,
+      },
+      include: { org: true },
+    });
+
+    return {
+      message: 'Concept paper deleted successfully',
+      data: updatedEvent,
   async getEventStats(eventId: string) {
     const [registrationsCount, ticketsCount, announcementsCount] =
       await Promise.all([
