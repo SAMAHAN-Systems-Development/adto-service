@@ -31,9 +31,7 @@ export class EventsService {
     }
 
     if (dateStart < now) {
-      throw new BadRequestException(
-        'Start date/time cannot be in the past.',
-      );
+      throw new BadRequestException('Start date/time cannot be in the past.');
     }
 
     if (dateEnd <= dateStart) {
@@ -161,7 +159,8 @@ export class EventsService {
           },
         }),
       ...eventStatusWhere,
-      ...(role !== UserType.ADMIN && role !== UserType.ORGANIZATION && { isPublished: true }),
+      ...(role !== UserType.ADMIN &&
+        role !== UserType.ORGANIZATION && { isPublished: true }),
       deletedAt: null,
       ...(eventStatus !== 'ARCHIVED' && { isArchived: false }),
     };
@@ -398,7 +397,7 @@ export class EventsService {
         message: 'Event unarchived successfully',
         data: await this.prisma.event.update({
           where: { id },
-          data: { 
+          data: {
             isArchived: false,
             isPublished: false,
           },
@@ -507,6 +506,28 @@ export class EventsService {
     return {
       message: 'Concept paper deleted successfully',
       data: updatedEvent,
+  async getEventStats(eventId: string) {
+    const [registrationsCount, ticketsCount, announcementsCount] =
+      await Promise.all([
+        this.prisma.registration.count({
+          where: {
+            ticketCategory: {
+              eventId,
+            },
+          },
+        }),
+        this.prisma.ticketCategory.count({
+          where: { eventId },
+        }),
+        this.prisma.eventAnnouncements.count({
+          where: { eventId },
+        }),
+      ]);
+
+    return {
+      registrationsCount,
+      ticketsCount,
+      announcementsCount,
     };
   }
 }

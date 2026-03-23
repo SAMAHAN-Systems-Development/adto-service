@@ -78,7 +78,8 @@ export class EventsController {
     @Query('searchFilter') searchFilter?: string,
     @Query('orderBy') orderBy?: 'asc' | 'desc',
     @Query('price') price?: 'free' | 'paid' | 'all',
-    @Query('eventStatus') eventStatus?: 'DRAFT' | 'UPCOMING' | 'FINISHED' | 'ARCHIVED',
+    @Query('eventStatus')
+    eventStatus?: 'DRAFT' | 'UPCOMING' | 'FINISHED' | 'ARCHIVED',
   ) {
     const { role, orgId } = req.user;
     return this.eventsService.findAll(role, orgId, {
@@ -124,6 +125,12 @@ export class EventsController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.eventsService.findOne(id);
+  }
+
+  @Public()
+  @Get(':id/stats')
+  getEventStats(@Param('id') id: string) {
+    return this.eventsService.getEventStats(id);
   }
 
   @Patch(':id')

@@ -1,11 +1,17 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { CreateRegistrationDto } from './dto/create-registration.dto';
 import { UpdateRegistrationDto } from './dto/update-registration.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { MailService } from 'src/mail/mail.service';
 
 @Injectable()
 export class RegistrationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(RegistrationsService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
+  ) {}
   async create(createRegistrationDto: CreateRegistrationDto) {
     try {
       const { ticketCategoryId, email, ...registrationData } =
@@ -68,6 +74,8 @@ export class RegistrationsService {
         },
       });
 
+      this.mailService.sendRegistrationConfirmation(createdRegistration);
+
       return {
         message: 'Registration created successfully',
         data: createdRegistration,
@@ -77,7 +85,7 @@ export class RegistrationsService {
         throw error;
       }
 
-      console.error('Registration creation error:', error);
+      this.logger.error('Registration creation error', error);
       throw new HttpException(
         'Failed to create registration',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -218,6 +226,26 @@ export class RegistrationsService {
       }
       throw new HttpException(
         `Failed to update registration`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async remove(id: string) {
+    try {
+      await this.findOne(id);
+      await this.prisma.registration.delete({ where: { id } });
+
+      return {
+        message: 'Registration deleted successfully',
+        statusCode: HttpStatus.OK,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Failed to delete registration',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
