@@ -65,6 +65,10 @@ export class RegistrationsService {
         );
       }
 
+      if (!ticketCategory.event.isRsvpEnabled) {
+        delete registrationData.hasRsvpd;
+      }
+
       const createdRegistration = await this.prisma.registration.create({
         data: { ticketCategoryId, email, ...registrationData },
         include: {
