@@ -167,8 +167,6 @@ model TicketRequests {
   status        TicketRequestStatus @default(PENDING)
   ticketLink    String?
   declineReason String?
-  helixpayUsername String?
-  helixpayPassword String?
   messengerLink String?
 }
 
