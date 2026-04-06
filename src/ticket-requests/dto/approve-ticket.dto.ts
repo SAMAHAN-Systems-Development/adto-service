@@ -7,13 +7,5 @@ export class ApproveTicketRequestDto {
 
   @IsOptional()
   @IsString()
-  helixpayUsername?: string;
-
-  @IsOptional()
-  @IsString()
-  helixpayPassword?: string;
-
-  @IsOptional()
-  @IsString()
   messengerLink?: string;
 }

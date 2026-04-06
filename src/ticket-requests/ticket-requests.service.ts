@@ -185,8 +185,7 @@ export class TicketRequestsService {
 
   async approve(id: string, approveTicketRequestDto: ApproveTicketRequestDto) {
     try {
-      const { ticketLink, helixpayUsername, helixpayPassword, messengerLink } =
-        approveTicketRequestDto;
+      const { ticketLink, messengerLink } = approveTicketRequestDto;
 
       const existing = await this.prisma.ticketRequests.findUnique({
         where: { id },
@@ -204,8 +203,6 @@ export class TicketRequestsService {
         where: { id },
         data: {
           ticketLink,
-          helixpayUsername,
-          helixpayPassword,
           messengerLink,
           status: TicketRequestStatus.APPROVED,
         },
