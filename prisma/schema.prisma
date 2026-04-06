@@ -167,7 +167,6 @@ model TicketRequests {
   status        TicketRequestStatus @default(PENDING)
   ticketLink    String?
   declineReason String?
-  messengerLink String?
 }
 
 model EventRequest {
