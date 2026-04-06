@@ -66,7 +66,6 @@ export class EventTicketsService {
           id: true,
           status: true,
           ticketLink: true,
-          messengerLink: true,
           declineReason: true,
           createdAt: true,
         },

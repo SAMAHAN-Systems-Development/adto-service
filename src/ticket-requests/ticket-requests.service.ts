@@ -185,7 +185,7 @@ export class TicketRequestsService {
 
   async approve(id: string, approveTicketRequestDto: ApproveTicketRequestDto) {
     try {
-      const { ticketLink, messengerLink } = approveTicketRequestDto;
+      const { ticketLink } = approveTicketRequestDto;
 
       const existing = await this.prisma.ticketRequests.findUnique({
         where: { id },
@@ -203,7 +203,6 @@ export class TicketRequestsService {
         where: { id },
         data: {
           ticketLink,
-          messengerLink,
           status: TicketRequestStatus.APPROVED,
         },
       });
