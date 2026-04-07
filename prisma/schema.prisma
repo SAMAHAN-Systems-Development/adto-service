@@ -43,6 +43,7 @@ model OrganizationParent {
   name                 String
   description          String
   organizationChildren OrganizationGroup[]
+  registrations        Registration[]
 }
 
 model OrganizationGroup {
@@ -74,6 +75,7 @@ model OrganizationChild {
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
   ticketRequests      TicketRequests[]
+  registrations       Registration[]
 }
 
 model User {
@@ -99,6 +101,10 @@ model Registration {
   confirmedAt      DateTime?
   isAttended       Boolean        @default(false)
   hasRsvpd         Boolean?       @default(false)
+  organizationParentId String?
+  organizationParent   OrganizationParent? @relation(fields: [organizationParentId], references: [id], onDelete: SetNull)
+  organizationChildId  String?
+  organizationChild    OrganizationChild?  @relation(fields: [organizationChildId], references: [id], onDelete: SetNull)
   ticketCategoryId String
   ticketCategory   TicketCategory @relation(fields: [ticketCategoryId], references: [id])
   createdAt        DateTime       @default(now())
