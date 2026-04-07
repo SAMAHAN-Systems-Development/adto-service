@@ -34,4 +34,12 @@ export class CreateRegistrationDto {
   @IsOptional()
   @IsBoolean()
   hasRsvpd?: boolean;
+
+  @IsOptional()
+  @IsString()
+  organizationParentId?: string;
+
+  @IsOptional()
+  @IsString()
+  organizationChildId?: string;
 }

@@ -12,10 +12,66 @@ export class RegistrationsService {
     private readonly prisma: PrismaService,
     private readonly mailService: MailService,
   ) {}
+
+  private async validateOrganizationReferences(
+    organizationParentId?: string,
+    organizationChildId?: string,
+  ) {
+    if (organizationParentId) {
+      const organizationParent =
+        await this.prisma.organizationParent.findUnique({
+          where: { id: organizationParentId },
+          select: { id: true },
+        });
+
+      if (!organizationParent) {
+        throw new HttpException(
+          'Organization group not found',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+    }
+
+    if (organizationChildId) {
+      const organizationChild = await this.prisma.organizationChild.findUnique({
+        where: { id: organizationChildId },
+        select: { id: true },
+      });
+
+      if (!organizationChild) {
+        throw new HttpException('Organization not found', HttpStatus.NOT_FOUND);
+      }
+    }
+
+    if (organizationParentId && organizationChildId) {
+      const organizationGroup = await this.prisma.organizationGroup.findUnique({
+        where: {
+          organizationParentId_organizationChildId: {
+            organizationParentId,
+            organizationChildId,
+          },
+        },
+        select: { organizationParentId: true },
+      });
+
+      if (!organizationGroup) {
+        throw new HttpException(
+          'Selected organization does not belong to the selected organization group',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+  }
+
   async create(createRegistrationDto: CreateRegistrationDto) {
     try {
-      const { ticketCategoryId, email, ...registrationData } =
-        createRegistrationDto;
+      const {
+        ticketCategoryId,
+        email,
+        organizationParentId,
+        organizationChildId,
+        ...registrationData
+      } = createRegistrationDto;
       // Verify ticket category exists and has capacity
       const ticketCategory = await this.prisma.ticketCategory.findUnique({
         where: { id: ticketCategoryId },
@@ -65,12 +121,25 @@ export class RegistrationsService {
         );
       }
 
+      await this.validateOrganizationReferences(
+        organizationParentId,
+        organizationChildId,
+      );
+
       const createdRegistration = await this.prisma.registration.create({
-        data: { ticketCategoryId, email, ...registrationData },
+        data: {
+          ticketCategoryId,
+          email,
+          organizationParentId,
+          organizationChildId,
+          ...registrationData,
+        },
         include: {
           ticketCategory: {
             include: { event: true },
           },
+          organizationParent: true,
+          organizationChild: true,
         },
       });
 
@@ -138,6 +207,8 @@ export class RegistrationsService {
                 },
               },
             },
+            organizationParent: true,
+            organizationChild: true,
           },
           orderBy: [{ createdAt: orderBy }, { id: 'asc' }],
         }),
@@ -175,6 +246,8 @@ export class RegistrationsService {
           ticketCategory: {
             include: { event: true },
           },
+          organizationParent: true,
+          organizationChild: true,
         },
       });
 
@@ -204,7 +277,36 @@ export class RegistrationsService {
 
   async update(id: string, updateRegistrationDto: UpdateRegistrationDto) {
     try {
-      await this.findOne(id);
+      const existingRegistration = await this.prisma.registration.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          organizationParentId: true,
+          organizationChildId: true,
+        },
+      });
+
+      if (!existingRegistration) {
+        throw new HttpException(
+          `Registration with id ${id} not found`,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const resolvedOrganizationParentId =
+        updateRegistrationDto.organizationParentId ??
+        existingRegistration.organizationParentId ??
+        undefined;
+      const resolvedOrganizationChildId =
+        updateRegistrationDto.organizationChildId ??
+        existingRegistration.organizationChildId ??
+        undefined;
+
+      await this.validateOrganizationReferences(
+        resolvedOrganizationParentId,
+        resolvedOrganizationChildId,
+      );
+
       const updatedRegistration = await this.prisma.registration.update({
         where: { id },
         data: updateRegistrationDto,
@@ -212,6 +314,8 @@ export class RegistrationsService {
           ticketCategory: {
             include: { event: true },
           },
+          organizationParent: true,
+          organizationChild: true,
         },
       });
 
