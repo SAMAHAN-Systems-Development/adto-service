@@ -293,14 +293,23 @@ export class RegistrationsService {
         );
       }
 
+      const hasParentInPayload = Object.prototype.hasOwnProperty.call(
+        updateRegistrationDto,
+        'organizationParentId',
+      );
+      const hasChildInPayload = Object.prototype.hasOwnProperty.call(
+        updateRegistrationDto,
+        'organizationChildId',
+      );
+
       const resolvedOrganizationParentId =
-        updateRegistrationDto.organizationParentId ??
-        existingRegistration.organizationParentId ??
-        undefined;
+        hasParentInPayload
+          ? (updateRegistrationDto.organizationParentId ?? undefined)
+          : (existingRegistration.organizationParentId ?? undefined);
       const resolvedOrganizationChildId =
-        updateRegistrationDto.organizationChildId ??
-        existingRegistration.organizationChildId ??
-        undefined;
+        hasChildInPayload
+          ? (updateRegistrationDto.organizationChildId ?? undefined)
+          : (existingRegistration.organizationChildId ?? undefined);
 
       await this.validateOrganizationReferences(
         resolvedOrganizationParentId,
