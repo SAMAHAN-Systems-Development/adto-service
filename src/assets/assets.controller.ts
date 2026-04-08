@@ -72,11 +72,12 @@ export class AssetsController {
     }
   }
 
-  @Delete(':key')
+  @Delete(':key(.*)')
   async deleteAsset(@Param('key') key: string) {
     try {
       await this.assetsService.deleteAsset(key);
       return {
+        key: key,
         message: 'Asset deleted successfully',
       };
     } catch (error) {
