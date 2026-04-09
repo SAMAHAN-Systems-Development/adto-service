@@ -14,6 +14,10 @@ export class CreateEventDto {
   @IsString()
   description: string;
 
+  @IsString()
+  @IsOptional()
+  venue?: string;
+
   @IsISO8601()
   @IsNotEmpty()
   dateStart: string;
