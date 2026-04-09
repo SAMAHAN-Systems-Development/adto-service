@@ -4,6 +4,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsBoolean,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateRegistrationDto {
@@ -35,11 +36,23 @@ export class CreateRegistrationDto {
   @IsBoolean()
   hasRsvpd?: boolean;
 
-  @IsOptional()
+  @ValidateIf((object: CreateRegistrationDto) =>
+    Boolean(object.organizationChildId),
+  )
   @IsString()
+  @IsNotEmpty({
+    message:
+      'organizationParentId is required when organizationChildId is provided',
+  })
   organizationParentId?: string;
 
-  @IsOptional()
+  @ValidateIf((object: CreateRegistrationDto) =>
+    Boolean(object.organizationParentId),
+  )
   @IsString()
+  @IsNotEmpty({
+    message:
+      'organizationChildId is required when organizationParentId is provided',
+  })
   organizationChildId?: string;
 }

@@ -17,6 +17,16 @@ export class RegistrationsService {
     organizationParentId?: string,
     organizationChildId?: string,
   ) {
+    const hasOrganizationParent = Boolean(organizationParentId);
+    const hasOrganizationChild = Boolean(organizationChildId);
+
+    if (hasOrganizationParent !== hasOrganizationChild) {
+      throw new HttpException(
+        'Please select both organization group and organization, or leave both blank',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     if (organizationParentId) {
       const organizationParent =
         await this.prisma.organizationParent.findUnique({
@@ -302,14 +312,12 @@ export class RegistrationsService {
         'organizationChildId',
       );
 
-      const resolvedOrganizationParentId =
-        hasParentInPayload
-          ? (updateRegistrationDto.organizationParentId ?? undefined)
-          : (existingRegistration.organizationParentId ?? undefined);
-      const resolvedOrganizationChildId =
-        hasChildInPayload
-          ? (updateRegistrationDto.organizationChildId ?? undefined)
-          : (existingRegistration.organizationChildId ?? undefined);
+      const resolvedOrganizationParentId = hasParentInPayload
+        ? (updateRegistrationDto.organizationParentId ?? undefined)
+        : (existingRegistration.organizationParentId ?? undefined);
+      const resolvedOrganizationChildId = hasChildInPayload
+        ? (updateRegistrationDto.organizationChildId ?? undefined)
+        : (existingRegistration.organizationChildId ?? undefined);
 
       await this.validateOrganizationReferences(
         resolvedOrganizationParentId,
