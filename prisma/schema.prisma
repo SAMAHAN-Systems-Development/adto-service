@@ -131,6 +131,7 @@ model Event {
   id                     String               @id @default(cuid())
   name                   String
   description            String
+  venue                  String? // Event venue location
   banner                 String? // Event banner image URL
   thumbnail              String? // Event thumbnail image URL
   conceptPaperUrl        String? // URL of the uploaded concept paper
