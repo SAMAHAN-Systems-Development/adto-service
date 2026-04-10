@@ -27,8 +27,11 @@ export function buildRegistrationConfirmationHtml(
   const dateStart = new Date(data.eventDateStart);
   const dateEnd = new Date(data.eventDateEnd);
 
+  const TZ = 'Asia/Manila';
+
   const formatDate = (d: Date) =>
     d.toLocaleDateString('en-US', {
+      timeZone: TZ,
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -37,17 +40,22 @@ export function buildRegistrationConfirmationHtml(
 
   const formatTime = (d: Date) =>
     d.toLocaleTimeString('en-US', {
+      timeZone: TZ,
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
     });
 
   const shortMonth = dateStart
-    .toLocaleDateString('en-US', { month: 'short' })
+    .toLocaleDateString('en-US', { timeZone: TZ, month: 'short' })
     .toUpperCase();
-  const dayNum = dateStart.getDate();
+  const dayNum = Number(
+    dateStart.toLocaleDateString('en-US', { timeZone: TZ, day: 'numeric' }),
+  );
 
-  const isSameDay = dateStart.toDateString() === dateEnd.toDateString();
+  const startDateStr = dateStart.toLocaleDateString('en-US', { timeZone: TZ });
+  const endDateStr = dateEnd.toLocaleDateString('en-US', { timeZone: TZ });
+  const isSameDay = startDateStr === endDateStr;
   const dateDisplay = isSameDay
     ? formatDate(dateStart)
     : `${formatDate(dateStart)} - ${formatDate(dateEnd)}`;
