@@ -38,7 +38,7 @@ export class EventTicketsController {
     @Query('limit') limit?: number,
     @Query('eventId') eventId?: string,
   ) {
-    return this.eventTicketsService.findAll(req.user.orgId, {
+    return this.eventTicketsService.findAll(req.user, {
       page: Number(page) || 1,
       limit: Number(limit) || 10,
       eventId,
@@ -60,7 +60,7 @@ export class EventTicketsController {
   @UseGuards(AuthGuard)
   @Roles(UserType.ORGANIZATION, UserType.ADMIN)
   findOne(@Param('id') id: string, @Req() req: any) {
-    return this.eventTicketsService.findOne(id, req.user.orgId);
+    return this.eventTicketsService.findOne(id, req.user);
   }
 
   @Patch('update/:id')

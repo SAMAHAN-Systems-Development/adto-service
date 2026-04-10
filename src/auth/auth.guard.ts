@@ -9,6 +9,14 @@ import { Request } from 'express';
 import { IS_PUBLIC_KEY } from './public.decorator';
 import { Reflector } from '@nestjs/core';
 
+interface JwtPayload {
+  role?: string;
+  userType?: string;
+  orgId?: string;
+  organizationId?: string;
+  [key: string]: any;
+}
+
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
@@ -32,10 +40,15 @@ export class AuthGuard implements CanActivate {
     }
 
     try {
-      const payload = await this.jwtService.verifyAsync(token, {
+      const payload = (await this.jwtService.verifyAsync(token, {
         secret: process.env.JWT_SECRET,
-      });
-      request['user'] = payload;
+      })) as JwtPayload;
+
+      request['user'] = {
+        ...payload,
+        role: payload.role ?? payload.userType,
+        orgId: payload.orgId ?? payload.organizationId,
+      };
     } catch (error) {
       console.log(error);
       throw new UnauthorizedException();

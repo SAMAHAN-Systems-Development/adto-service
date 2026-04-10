@@ -9,7 +9,7 @@ import {
 import { CreateEventTicketDto } from './dto/create-event-ticket.dto';
 import { UpdateEventTicketDto } from './dto/update-event-ticket.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Prisma, TicketRequestStatus } from '@prisma/client';
+import { Prisma, TicketRequestStatus, UserType } from '@prisma/client';
 
 @Injectable()
 export class EventTicketsService {
@@ -34,6 +34,20 @@ export class EventTicketsService {
         HttpStatus.FORBIDDEN,
       );
     }
+
+    return orgId;
+  }
+
+  private resolveRole(user: any): string {
+    return (user?.role ?? user?.userType ?? '').toString().toUpperCase();
+  }
+
+  private resolveOrgId(user: any): string | undefined {
+    return user?.orgId ?? user?.organizationId;
+  }
+
+  private isAdmin(user: any): boolean {
+    return this.resolveRole(user) === UserType.ADMIN;
   }
 
   private async assertEventInOrg(eventId: string, orgId: string) {
@@ -110,22 +124,32 @@ export class EventTicketsService {
   }
 
   async findAll(
-    orgId: string,
+    user: any,
     query: { page?: number; limit?: number; eventId?: string },
   ) {
-    this.ensureOrgId(orgId);
+    const isAdmin = this.isAdmin(user);
+    const orgId = this.resolveOrgId(user);
+
+    if (!isAdmin) {
+      this.ensureOrgId(orgId);
+    }
+
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    let where: Prisma.TicketCategoryWhereInput = {
-      event: {
-        orgId,
-      },
-    };
+    let where: Prisma.TicketCategoryWhereInput = isAdmin
+      ? {}
+      : {
+          event: {
+            orgId,
+          },
+        };
 
     if (query.eventId) {
-      await this.assertEventInOrg(query.eventId, orgId);
+      if (!isAdmin) {
+        await this.assertEventInOrg(query.eventId, orgId as string);
+      }
       where = {
         ...where,
         eventId: query.eventId,
@@ -191,8 +215,14 @@ export class EventTicketsService {
     };
   }
 
-  async findOne(id: string, orgId: string) {
-    this.ensureOrgId(orgId);
+  async findOne(id: string, user: any) {
+    const isAdmin = this.isAdmin(user);
+    const orgId = this.resolveOrgId(user);
+
+    if (!isAdmin) {
+      this.ensureOrgId(orgId);
+    }
+
     const ticket = await this.prisma.ticketCategory.findUnique({
       where: { id },
       include: {
@@ -205,7 +235,7 @@ export class EventTicketsService {
       throw new HttpException('Ticket not found', HttpStatus.NOT_FOUND);
     }
 
-    if (ticket.event.orgId !== orgId) {
+    if (!isAdmin && ticket.event.orgId !== orgId) {
       throw new HttpException(
         'Forbidden: ticket does not belong to your organization',
         HttpStatus.FORBIDDEN,
@@ -221,7 +251,10 @@ export class EventTicketsService {
     orgId: string,
   ) {
     this.ensureOrgId(orgId);
-    const existingTicket = await this.findOne(id, orgId); // This already verifies ownership
+    const existingTicket = await this.findOne(id, {
+      role: UserType.ORGANIZATION,
+      orgId,
+    });
     const { eventId, registrationDeadline, ...ticketData } =
       updateEventTicketDto;
 
@@ -283,7 +316,10 @@ export class EventTicketsService {
 
   async remove(id: string, orgId: string) {
     this.ensureOrgId(orgId);
-    const ticket = await this.findOne(id, orgId); // This already verifies ownership
+    const ticket = await this.findOne(id, {
+      role: UserType.ORGANIZATION,
+      orgId,
+    });
 
     // Check for active requests to prevent deletion
     const activeRequest = await this.prisma.ticketRequests.findFirst({
